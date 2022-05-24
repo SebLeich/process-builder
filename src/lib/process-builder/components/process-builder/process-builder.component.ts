@@ -20,6 +20,7 @@ export class ProcessBuilderComponent implements AfterContentInit, OnInit {
   ngAfterContentInit(): void {
     // attach BpmnJS instance to DOM element
     this._processBuilderComponentService.bpmnJS.attachTo(this.diagramWrapper.nativeElement);
+    this._processBuilderComponentService.setDefaultModel();
   }
 
   ngOnInit(): void {

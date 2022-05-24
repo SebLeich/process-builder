@@ -7,7 +7,7 @@ import { shareReplay } from 'rxjs';
 })
 export class ProcessBuilderService {
 
-  defaultBPMNModel$ = this._httpClient.get('./assets/bpmn.xml', {
+  defaultBPMNModel$ = this._httpClient.get('./assets/default-bpmn.xml', {
     headers: new HttpHeaders().set('Content-Type', 'text/xml'),
     responseType: 'text'
   }).pipe(
