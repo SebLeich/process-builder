@@ -1,33 +1,33 @@
 @import 'src/lib/sass/stretched-element'
 
-.body, .diagram-wrapper
+::ng-deep .PB_diagram-body, .PB_diagram-body .diagram-wrapper
     @include stretched-element
 
-.diagram-body.not-editable .djs-palette
+::ng-deep .PB_diagram-body .diagram-body.not-editable .djs-palette
     display: none
 
-.diagram-body.hide-events .bpmn-icon-intermediate-event-none,
-.diagram-body.hide-events .bpmn-icon-start-event-none,
-.diagram-body.hide-events .bpmn-icon-end-event-none
+::ng-deep .PB_diagram-body .diagram-body.hide-events .bpmn-icon-intermediate-event-none,
+::ng-deep .PB_diagram-body .diagram-body.hide-events .bpmn-icon-start-event-none,
+::ng-deep .PB_diagram-body .diagram-body.hide-events .bpmn-icon-end-event-none
     display: none
 
-.diagram-body.hide-tasks .bpmn-icon-task
+::ng-deep .PB_diagram-body .diagram-body.hide-tasks .bpmn-icon-task
     display: none
 
-.diagram-body.hide-gateways .bpmn-icon-gateway-none
+::ng-deep .PB_diagram-body .diagram-body.hide-gateways .bpmn-icon-gateway-none
     display: none
 
-.diagram-body.hide-sub-processes .bpmn-icon-subprocess-expanded
+::ng-deep .PB_diagram-body .diagram-body.hide-sub-processes .bpmn-icon-subprocess-expanded
     display: none
 
-.diagram-body.hide-data-object-references .bpmn-icon-data-object
+::ng-deep .PB_diagram-body .diagram-body.hide-data-object-references .bpmn-icon-data-object
     display: none
 
-.diagram-body.hide-databases .bpmn-icon-data-store
+::ng-deep .PB_diagram-body .diagram-body.hide-databases .bpmn-icon-data-store
     display: none
 
-.diagram-body.hide-pools .bpmn-icon-participant
+::ng-deep .PB_diagram-body .diagram-body.hide-pools .bpmn-icon-participant
     display: none
 
-.diagram-body.hide-groups .bpmn-icon-group
+::ng-deep .PB_diagram-body .diagram-body.hide-groups .bpmn-icon-group
     display: none

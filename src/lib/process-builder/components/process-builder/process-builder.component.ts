@@ -1,4 +1,5 @@
-import { AfterContentInit, Component, ElementRef, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import { AfterContentInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { showAnimation } from 'src/lib/shared/animations/show';
 import { ProcessBuilderService } from '../../services/process-builder.service';
 import { ProcessBuilderComponentService } from './process-builder-component.service';
 
@@ -6,7 +7,9 @@ import { ProcessBuilderComponentService } from './process-builder-component.serv
   selector: 'app-process-builder',
   templateUrl: './process-builder.component.html',
   styleUrls: ['./process-builder.component.sass'],
-  encapsulation: ViewEncapsulation.None,
+  animations: [
+    showAnimation
+  ],
   providers: [
     ProcessBuilderComponentService
   ]

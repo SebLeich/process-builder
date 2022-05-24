@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Inject, Injectable, Optional } from '@angular/core';
-import { BehaviorSubject, map, ReplaySubject, shareReplay, take } from 'rxjs';
+import { map, ReplaySubject, shareReplay, take } from 'rxjs';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from '../globals/i-process-builder-config';
 
 @Injectable({
@@ -18,19 +18,10 @@ export class ProcessBuilderService {
   private _config = new ReplaySubject<IProcessBuilderConfig>(1);
 
   constructor(
-    @Optional() @Inject(PROCESS_BUILDER_CONFIG_TOKEN) private config: IProcessBuilderConfig = {
-      'editable': true,
-      'hideDataObjectReferences': false,
-      'hideDatabases': false,
-      'hideEvents': false,
-      'hideGateways': false,
-      'hideGroups': false,
-      'hidePools': false,
-      'hideSubProcesses': false,
-      'hideTasks': false
-    },
+    @Optional() @Inject(PROCESS_BUILDER_CONFIG_TOKEN) private config: IProcessBuilderConfig,
     private _httpClient: HttpClient
   ) {
+    if (!config) config = this.defaultConfig;
     this._config.next(config);
   }
 
@@ -56,5 +47,19 @@ export class ProcessBuilderService {
   hideDatabases$ = this._config.pipe(map(x => x.hideDatabases));
   hidePools$ = this._config.pipe(map(x => x.hidePools));
   hideGroups$ = this._config.pipe(map(x => x.hideGroups));
+
+  get defaultConfig(): IProcessBuilderConfig {
+    return {
+      'editable': true,
+      'hideDataObjectReferences': false,
+      'hideDatabases': false,
+      'hideEvents': false,
+      'hideGateways': false,
+      'hideGroups': false,
+      'hidePools': false,
+      'hideSubProcesses': false,
+      'hideTasks': false
+    } as IProcessBuilderConfig;
+  }
 
 }

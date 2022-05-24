@@ -1,4 +1,4 @@
-<div class="body diagram-body" [ngClass]="{
+<div class="PB_diagram-body" [ngClass]="{
        'not-editable': (processBuilderService.editable$|async) === true? false: true,
        'hide-events': (processBuilderService.hideEvents$|async) === true? true: false,
        'hide-tasks': (processBuilderService.hideTasks$|async) === true? true: false,
@@ -8,7 +8,7 @@
        'hide-databases': (processBuilderService.hideDatabases$|async) === true? true: false,
        'hide-pools': (processBuilderService.hidePools$|async) === true? true: false,
        'hide-groups': (processBuilderService.hideGroups$|async) === true? true: false
-     }">
+     }" @show>
 
        <div #diagramWrapper class="diagram-wrapper"></div>
 
