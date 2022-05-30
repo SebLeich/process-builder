@@ -1,4 +1,4 @@
-import { AfterContentInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterContentInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { showAnimation } from 'src/lib/shared/animations/show';
 import { ProcessBuilderService } from '../../services/process-builder.service';
 import { ProcessBuilderComponentService } from './process-builder-component.service';
@@ -14,19 +14,21 @@ import { ProcessBuilderComponentService } from './process-builder-component.serv
     ProcessBuilderComponentService
   ]
 })
-export class ProcessBuilderComponent implements AfterContentInit, OnInit {
+export class ProcessBuilderComponent implements AfterContentInit, OnDestroy, OnInit {
 
   @ViewChild('diagramWrapper', { static: true }) private diagramWrapper!: ElementRef<HTMLDivElement>;
 
   constructor(
     public processBuilderService: ProcessBuilderService,
-    private _processBuilderComponentService: ProcessBuilderComponentService
+    public processBuilderComponentService: ProcessBuilderComponentService
   ) { }
 
   ngAfterContentInit(): void {
-    // attach BpmnJS instance to DOM element
-    this._processBuilderComponentService.bpmnJS.attachTo(this.diagramWrapper.nativeElement);
-    this._processBuilderComponentService.setDefaultModel();
+    this.processBuilderComponentService.init(this.diagramWrapper.nativeElement);
+  }
+
+  ngOnDestroy(): void {
+    this.processBuilderComponentService.dispose();
   }
 
   ngOnInit(): void {

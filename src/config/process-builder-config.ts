@@ -9,5 +9,9 @@ export default {
     'hideGroups': true,
     'hidePools': true,
     'hideSubProcesses': true,
-    'hideTasks': true
+    'hideTasks': true,
+    'statusConfig': {
+        'initialStatus': 'initial',
+        'finalStatus': 'final'
+    }
 } as IProcessBuilderConfig;
