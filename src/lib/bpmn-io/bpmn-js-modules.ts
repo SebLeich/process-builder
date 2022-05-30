@@ -1,6 +1,9 @@
 export default {
-    'ElementFactory': 'elementFactory',
+    DirectEditing: 'directEditing',
+    ElementFactory: 'elementFactory',
     'ElementRegistry': 'elementRegistry',
     'Modeling': 'modeling',
     'EventBus': 'eventBus',
+    'Selection': 'selection',
+    'Snapping': 'snapping'
 }
