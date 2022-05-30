@@ -65,7 +65,7 @@ export class ProcessBuilderComponentService {
           this.modeling = this.bpmnJS.get(BPMNJSModules.Modeling);
           this.eventBus = this.bpmnJS.get(BPMNJSModules.EventBus);
 
-          this.eventBus.on(BPMNJSEventTypes.CreateShape, (evt: any) => this._shapeCreated.next(evt));
+          this.eventBus.on(BPMNJSEventTypes.ShapeAdded, (evt: any) => this._shapeCreated.next(evt));
 
           // (2) Get the existing process and the start event
           //const process = elementRegistry.get('ROOT');

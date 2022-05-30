@@ -10,20 +10,46 @@ import { FunctionSelectionControlService } from "../process-builder/services/fun
 export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
     let config: IProcessBuilderConfig = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
-    let _actions: { [key: string]: (evt: IEvent) => void } = {};
+    let _elementDblClickActions: { [key: string]: (evt: IEvent) => void } = { };
+    let _shapeAddedActions: { [key: string]: (evt: IEvent) => void } = { };
 
-    _actions[shapeTypes.StartEvent] = (evt: IEvent) => bpmnJS.get(bpmnJsModules.Modeling).updateLabel(evt.element, config.statusConfig.initialStatus);
-    _actions[shapeTypes.EndEvent] = (evt: IEvent) => bpmnJS.get(bpmnJsModules.Modeling).updateLabel(evt.element, config.statusConfig.finalStatus);
-    _actions[shapeTypes.Task] = (evt: IEvent) => {
+    _elementDblClickActions[shapeTypes.Task] = (evt: IEvent) => {
         let service: FunctionSelectionControlService = injector.get(FunctionSelectionControlService);
         service.selectFunction(null);
     }
 
-    bpmnJS.get(bpmnJsModules.EventBus).on(bpmnJsEventTypes.CreateShape, (evt: IEvent) => {
+    _shapeAddedActions[shapeTypes.StartEvent] = (evt: IEvent) => bpmnJS.get(bpmnJsModules.Modeling).updateLabel(evt.element, config.statusConfig.initialStatus);
+    _shapeAddedActions[shapeTypes.EndEvent] = (evt: IEvent) => bpmnJS.get(bpmnJsModules.Modeling).updateLabel(evt.element, config.statusConfig.finalStatus);
+    _shapeAddedActions[shapeTypes.Task] = (evt: IEvent) => {
+        let service: FunctionSelectionControlService = injector.get(FunctionSelectionControlService);
+        service.selectFunction(null);
+    }
 
-        if (typeof _actions[evt.element.type] === 'undefined') return;
+    bpmnJS.get(bpmnJsModules.EventBus).on(bpmnJsEventTypes.ShapeAdded, (evt: IEvent) => {
 
-        timer(5).subscribe(() => _actions[evt.element.type](evt));
+        if (typeof _shapeAddedActions[evt.element.type] === 'undefined') return;
+
+        timer(1).subscribe(() => _shapeAddedActions[evt.element.type](evt));
+
+    });
+
+    bpmnJS.get(bpmnJsModules.EventBus).on(bpmnJsEventTypes.SelectionChanged, (evt: IEvent) => {
+
+        /*
+
+        if (typeof _elementDblClickActions[evt.element.type] === 'undefined') return;
+
+        timer(1).subscribe(() => _elementDblClickActions[evt.element.type](evt));
+
+        */
+
+        console.log(evt);
+
+    });
+
+    bpmnJS.get(bpmnJsModules.EventBus).on(bpmnJsEventTypes.ElementMarkerUpdate, (evt: IEvent) => {
+
+        if(evt.element.type === shapeTypes.Task) debugger;
 
     });
 
