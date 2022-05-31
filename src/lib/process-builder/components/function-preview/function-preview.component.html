@@ -1,7 +1,7 @@
 <div class="body">
 
     <div class="function-name">
-        {{function.name}}
+        {{func.name}}
     </div>
 
     <div class="scheme-wrapper">
@@ -10,11 +10,27 @@
 
             <div class="section-title">Input</div>
 
+            <div class="section-content">
+
+                <ng-container *ngIf="inputParams.length === 0; else inputParamsList">
+
+                    Keine Eingangsparameter
+
+                </ng-container>
+
+            </div>
+
         </div>
 
         <div class="section">
 
             <div class="section-title">Verarbeitet</div>
+
+            <div class="section-content">
+
+                <mat-icon>settings</mat-icon>
+                
+            </div>
 
         </div>
 
@@ -22,8 +38,34 @@
 
             <div class="section-title">Output</div>
 
+            <div class="section-content">
+
+                <ng-container *ngIf="!func.output; else outputParamPreview">
+
+                    Keine Rückgabe
+
+                </ng-container>
+
+            </div>
+
         </div>
 
     </div>
 
 </div>
+
+<ng-template #inputParamsList>
+
+    <div *ngFor="let param of inputParams">
+        {{param.param|param|async}}
+    </div>
+
+</ng-template>
+
+<ng-template #outputParamPreview>
+
+    <div>
+        {{func.output?.param|param|async}}
+    </div>
+
+</ng-template>

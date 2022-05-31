@@ -14,13 +14,15 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { FunctionSelectionComponent } from './components/function-selection/function-selection.component';
 import { FunctionPreviewComponent } from './components/function-preview/function-preview.component';
+import { ParamPipe } from './pipes/param.pipe';
 
 
 @NgModule({
   declarations: [
     ProcessBuilderComponent,
     FunctionSelectionComponent,
-    FunctionPreviewComponent
+    FunctionPreviewComponent,
+    ParamPipe
   ],
   imports: [
     CommonModule,
@@ -33,6 +35,9 @@ import { FunctionPreviewComponent } from './components/function-preview/function
     ]),
     StoreModule.forFeature(fromState.featureKey, fromState.reducer),
     EffectsModule.forFeature([IParamEffects]),
+  ],
+  providers: [
+    ParamPipe
   ]
 })
 export class ProcessBuilderModule { }

@@ -1,5 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { IFunction } from '../../globals/i-function';
+import { IInputParam } from '../../globals/i-input-param';
 
 @Component({
   selector: 'app-function-preview',
@@ -8,11 +9,14 @@ import { IFunction } from '../../globals/i-function';
 })
 export class FunctionPreviewComponent implements OnInit {
 
-  @Input() function!: IFunction;
+  @Input() func!: IFunction;
+
+  inputParams: IInputParam[] = [];
 
   constructor() { }
 
   ngOnInit(): void {
+    this.inputParams = Array.isArray(this.func.inputParams) ? this.func.inputParams : this.func.inputParams ? [this.func.inputParams] : [];
   }
 
 }

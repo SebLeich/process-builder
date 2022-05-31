@@ -14,9 +14,9 @@
 
     <div class="dialog-body">
 
-        <div class="function-wrapper" *ngFor="let function of (availableFunctions$|async)" (click)="selectFunction(function)">
+        <div class="function-wrapper" *ngFor="let func of (availableFunctions$|async)" (click)="selectFunction(func)">
 
-            <app-function-preview [function]="function"></app-function-preview>
+            <app-function-preview [func]="func"></app-function-preview>
 
         </div>
 

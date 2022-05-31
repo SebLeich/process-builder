@@ -10,7 +10,8 @@ export default [
             let val = 'test_value_123456789';
             console.log(val);
             return val;
-        }
+        },
+        'canFail': true
     } as IFunction,
     {
         'inputParams': null,
@@ -20,7 +21,8 @@ export default [
             let val = 123456789;
             console.log(val);
             return val;
-        }
+        },
+        'canFail': true
     } as IFunction,
     {
         'inputParams': null,
@@ -30,7 +32,8 @@ export default [
             let val = '2022-01-01T00:30:00';
             console.log(val);
             return val;
-        }
+        },
+        'canFail': true
     } as IFunction,
     {
         'inputParams': [
@@ -39,7 +42,8 @@ export default [
         'name': 'Log user input to console',
         'pseudoImplementation': (inp: string) => {
             console.log(`${inp}`);
-        }
+        },
+        'canFail': false
     } as IFunction,
     {
         'inputParams': [
@@ -51,6 +55,7 @@ export default [
             let output = inp.toUpperCase();
             console.log(`${inp}, converted to: ${output}`);
             return output;
-        }
+        },
+        'canFail': true
     } as IFunction
 ];

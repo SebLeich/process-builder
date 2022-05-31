@@ -19,7 +19,6 @@ import { loadIParams } from '../../store/actions/i-param.actions';
 import { selectIParams } from '../../store/selectors/i-param.selectors';
 import { startEventFilter } from 'src/lib/bpmn-io/rxjs-operators';
 import { IEvent } from 'src/lib/bpmn-io/i-event';
-import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from '../../globals/i-process-builder-config';
 import { validateBPMNConfig } from 'src/lib/core/config-validator';
 
 @Injectable()
@@ -115,10 +114,10 @@ export class ProcessBuilderComponentService {
     this._store.dispatch(loadIParams());
     this._subscriptions.push(...[
       this._shapeCreated.subscribe(x => {
-        console.log(x)
+        //console.log(x)
       }),
       this._shapeCreated.pipe(startEventFilter).subscribe(e => {
-        debugger;
+        //debugger;
       })
     ])
   }

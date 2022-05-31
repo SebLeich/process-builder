@@ -7,6 +7,7 @@ export interface IFunction {
     inputParams: IInputParam | IInputParam[] | null;
     output: IOutputParam | null;
     pseudoImplementation: (args: any) => any;
+    canFail: boolean;
 }
 
 export const FUNCTIONS_CONFIG_TOKEN: InjectionToken<IFunction[]> = new InjectionToken<IFunction[]>("FUNCTION_CONFIG");
