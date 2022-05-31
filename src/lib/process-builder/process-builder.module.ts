@@ -8,19 +8,26 @@ import * as fromState from './store/reducers/i-param-reducer';
 import { EffectsModule } from '@ngrx/effects';
 import { IParamEffects } from './store/effects/i-param.effects';
 
+import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+
 import { FunctionSelectionComponent } from './components/function-selection/function-selection.component';
+import { FunctionPreviewComponent } from './components/function-preview/function-preview.component';
 
 
 @NgModule({
   declarations: [
     ProcessBuilderComponent,
-    FunctionSelectionComponent
+    FunctionSelectionComponent,
+    FunctionPreviewComponent
   ],
   imports: [
     CommonModule,
     HttpClientModule,
+    MatButtonModule,
     MatDialogModule,
+    MatIconModule,
     RouterModule.forChild([
       { path: '**', component: ProcessBuilderComponent }
     ]),

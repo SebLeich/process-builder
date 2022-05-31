@@ -15,7 +15,9 @@ export class FunctionSelectionControlService {
   selectFunction(inputParam: IParam | IParam | null): Observable<IFunction | null | undefined> {
     
     let ref = this._dialog.open(FunctionSelectionComponent, {
-      data: inputParam
+      data: inputParam,
+      panelClass: 'no-padding-dialog',
+      disableClose: true
     });
     return ref.afterClosed();
 

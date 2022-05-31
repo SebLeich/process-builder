@@ -1,4 +1,5 @@
 export default {
+    'DataObjectReference': 'bpmn:DataObjectReference',
     'EndEvent': 'bpmn:EndEvent',
     'ExclusiveGateway': 'bpmn:ExclusiveGateway',
     'ParallelGateway': 'bpmn:ParallelGateway',

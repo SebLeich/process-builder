@@ -1,1 +1,25 @@
-<p>function-selection works!</p>
+<div class="body">
+
+    <div class="dialog-navbar">
+
+        <mat-icon class="icon">rule</mat-icon>
+        <div class="text">
+            Funktion wählen
+        </div>
+        <button mat-icon-button color="warn" (click)="abort()">
+            <mat-icon>clear</mat-icon>
+        </button>
+
+    </div>
+
+    <div class="dialog-body">
+
+        <div class="function-wrapper" *ngFor="let function of (availableFunctions$|async)" (click)="selectFunction(function)">
+
+            <app-function-preview [function]="function"></app-function-preview>
+
+        </div>
+
+    </div>
+
+</div>
