@@ -54,6 +54,7 @@ export default [
             { 'optional': false, 'param': ParamCodes.UserStringInput }
         ],
         'name': 'Convert user input to uppercase',
+        'description': 'method converts user input to uppercase',
         'output': { 'param': ParamCodes.ToUpperCaseResult },
         'pseudoImplementation': (inp: string) => {
             let output = inp.toUpperCase();

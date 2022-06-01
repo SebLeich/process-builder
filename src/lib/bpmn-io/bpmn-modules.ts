@@ -9,7 +9,7 @@ export interface IModelingModule {
     appendShape: (origin: IElement, type: { type: string, data?: any }, position: null | { x: number, y: number }) => IElement;
     connect: (origin: IElement, target: IElement) => IConnector;
     removeElements: (elements: IElement[]) => void;
-    updateLabel: (element: IElement, text: string) => void;
+    updateLabel: (element: IElement | IConnector, text: string) => void;
 }
 
 export interface IElementRegistry {

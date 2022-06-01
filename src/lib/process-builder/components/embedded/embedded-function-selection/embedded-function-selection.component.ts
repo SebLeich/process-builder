@@ -9,11 +9,13 @@ import { showAnimation } from 'src/lib/shared/animations/show';
   selector: 'app-embedded-function-selection',
   templateUrl: './embedded-function-selection.component.html',
   styleUrls: ['./embedded-function-selection.component.sass'],
-  animations: [ showAnimation ]
+  animations: [showAnimation]
 })
 export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<IFunction>, OnDestroy, OnInit {
 
   @Input() inputParams!: ParamCodes | ParamCodes[] | null;
+  @Input() initialValue: IFunction | undefined;
+
   @Output() valueChange: EventEmitter<IFunction> = new EventEmitter<IFunction>();
 
   private _availableFunctions = new ReplaySubject<IFunction[]>(1);
@@ -25,15 +27,20 @@ export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<IFuncti
     @Inject(FUNCTIONS_CONFIG_TOKEN) private _functions: IFunction[],
   ) { }
 
+  applyInputParams(...args: any) {
+    this.inputParams = args;
+  }
+
   ngOnDestroy(): void {
     this.valueChange.complete();
   }
 
   ngOnInit(): void {
+    this.selection = this.initialValue;
     this._setFunctions();
   }
 
-  selectFunction(func: IFunction){
+  selectFunction(func: IFunction) {
     this.selection = func;
     this.valueChange.emit(func);
   }

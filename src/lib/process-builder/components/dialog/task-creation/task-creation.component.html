@@ -14,9 +14,9 @@
 
     <div class="dialog-body">
 
-        <mat-tab-group mat-align-tabs="start" (selectedIndexChange)="setStep($event)">
+        <mat-tab-group mat-align-tabs="start" (selectedIndexChange)="setStep($event)" [selectedIndex]="currentStepIndex">
 
-            <mat-tab [label]=(tab.taskCreationStep|taskCreationStep) *ngFor="let tab of data"></mat-tab>
+            <mat-tab [label]=(tab.taskCreationStep|taskCreationStep) *ngFor="let tab of data.steps"></mat-tab>
 
         </mat-tab-group>
 

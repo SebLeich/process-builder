@@ -1,5 +1,5 @@
 import { Injector } from "@angular/core";
-import { bufferTime, filter, ReplaySubject, Subject, timer, toArray } from "rxjs";
+import { bufferTime, filter, ReplaySubject, Subject, timer } from "rxjs";
 import bpmnJsEventTypes from "../bpmn-io/bpmn-js-event-types";
 import bpmnJsModules from "../bpmn-io/bpmn-js-modules";
 import { getElementRegistryModule, getModelingModule } from "../bpmn-io/bpmn-modules";
@@ -9,21 +9,21 @@ import { IEvent } from "../bpmn-io/i-event";
 import { IShapeDeleteExecutedEvent } from "../bpmn-io/i-shape-delete-executed-event";
 import shapeTypes from "../bpmn-io/shape-types";
 import { ITaskCreationComponentOutput } from "../process-builder/components/dialog/task-creation/i-task-creation-component-output";
+import { ErrorGatewayEvent } from "../process-builder/globals/error-gateway-event";
 import { IFunction } from "../process-builder/globals/i-function";
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from "../process-builder/globals/i-process-builder-config";
 import { ITaskCreationConfig } from "../process-builder/globals/i-task-creation-config";
 import { TaskCreationStep } from "../process-builder/globals/task-creation-step";
 import { ParamPipe } from "../process-builder/pipes/param.pipe";
 import { DialogService } from "../process-builder/services/dialog.service";
-import { FunctionSelectionControlService } from "../process-builder/services/function-selection-control.service";
 import { BPMNJsRepository } from "./bpmn-js-repository";
 
 export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
     let taskCreationSubject = new Subject<ITaskCreationConfig>();
-    taskCreationSubject.pipe(bufferTime(200), filter(x => x.length > 0)).subscribe((val) => {
+    taskCreationSubject.pipe(bufferTime(1000), filter(x => x.length > 0)).subscribe((val) => {
         let service = injector.get(DialogService);
-        service.configTaskCreation(val).subscribe((results) => {
+        service.configTaskCreation(val, bpmnJS).subscribe((results) => {
             for (let result of results) handleTaskCreationComponentOutput(result);
         });
     });
@@ -37,26 +37,17 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
     _connectionCreatePostExecutedActions[shapeTypes.SequenceFlow] = (evt: IConnectionCreatePostExecutedEvent) => {
         if (evt.context.source.type !== shapeTypes.ExclusiveGateway || evt.context.source.data['gatewayType'] !== 'error_gateway') return;
         if (!taskCreationSubject) taskCreationSubject = new ReplaySubject<ITaskCreationConfig>();
-        taskCreationSubject.next({ 'taskCreationStep': TaskCreationStep.ConfigureErrorGatewayEntranceConnection, payload: evt });
+        taskCreationSubject.next({ 'taskCreationStep': TaskCreationStep.ConfigureErrorGatewayEntranceConnection, payload: evt, element: evt.context.connection });
     }
 
     _directEditingActivateActions[shapeTypes.Task] = (evt: IDirectEditingEvent) => {
-        console.log("DE A");
         bpmnJS.get(bpmnJsModules.DirectEditing).cancel();
-        let service: FunctionSelectionControlService = injector.get(FunctionSelectionControlService);
-        let availableParams = BPMNJsRepository.getAvailableInputParams(evt.active.element);
         if (!taskCreationSubject) taskCreationSubject = new ReplaySubject<ITaskCreationConfig>();
-        taskCreationSubject.next({ 'taskCreationStep': TaskCreationStep.ConfigureFunctionSelection, payload: evt });
-        /*
-        service.selectFunction(availableParams).subscribe((f: IFunction | null | undefined) => {
-            applyFunctionConfig(evt, f);
-        });
-        */
+        taskCreationSubject.next({ 'taskCreationStep': TaskCreationStep.ConfigureFunctionSelection, payload: evt, element: evt.active.element });
     }
     _directEditingActivateActions[shapeTypes.DataObjectReference] = (evt: IDirectEditingEvent) => {
-        console.log("DE A");
         bpmnJS.get(bpmnJsModules.DirectEditing).cancel();
-        let service: FunctionSelectionControlService = injector.get(FunctionSelectionControlService);
+        let service: DialogService = injector.get(DialogService);
         service.editParam(evt.active.element.data['outputParam']).subscribe(() => {
 
         });
@@ -95,7 +86,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         _connectionCreatePostExecutedActions[evt.context.connection.type](evt);
     });
 
-    const applyFunctionConfig = (evt: IDirectEditingEvent, f: IFunction | null | undefined) => {
+    const applyFunctionSelectionConfig = (evt: IDirectEditingEvent, f: IFunction | null | undefined) => {
         if (!f) {
             getModelingModule(bpmnJS).removeElements([evt.active.element]);
             return;
@@ -131,12 +122,22 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         }
     }
 
+    const applyErrorGatewayEntranceConnection = (evt: IConnectionCreatePostExecutedEvent, e: ErrorGatewayEvent) => {
+        if(typeof e !== 'number') return;
+        let config = injector.get(PROCESS_BUILDER_CONFIG_TOKEN);
+        getModelingModule(bpmnJS).updateLabel(evt.context.connection, e === ErrorGatewayEvent.Success? config.errorGatewayConfig.successConnectionName: config.errorGatewayConfig.errorConnectionName);
+    }
+
     const handleTaskCreationComponentOutput = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {
 
         switch (taskCreationComponentOutput.config.taskCreationStep) {
 
+            case TaskCreationStep.ConfigureErrorGatewayEntranceConnection:
+                applyErrorGatewayEntranceConnection(taskCreationComponentOutput.config.payload, taskCreationComponentOutput.value);
+                break;
+
             case TaskCreationStep.ConfigureFunctionSelection:
-                applyFunctionConfig(taskCreationComponentOutput.config.payload, taskCreationComponentOutput.value);
+                applyFunctionSelectionConfig(taskCreationComponentOutput.config.payload, taskCreationComponentOutput.value);
                 break;
 
         }

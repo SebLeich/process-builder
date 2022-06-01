@@ -1,7 +1,11 @@
-<div class="function-wrapper" *ngFor="let func of (availableFunctions$|async)" (click)="selectFunction(func)" [ngClass]="{
-    'active': func === selection
-}" @show>
+<div class="body">
 
-    <app-function-preview [func]="func"></app-function-preview>
+    <div class="function-wrapper" *ngFor="let func of (availableFunctions$|async)" (click)="selectFunction(func)" [ngClass]="{
+        'active': func === selection
+    }">
+    
+        <app-function-preview [func]="func"></app-function-preview>
+    
+    </div>
 
 </div>
