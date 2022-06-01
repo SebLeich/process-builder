@@ -1,0 +1,24 @@
+<div class="body">
+
+    <div class="dialog-navbar">
+
+        <mat-icon class="icon">edit</mat-icon>
+        <div class="text">
+            Parameter bearbeiten
+        </div>
+        <button mat-icon-button color="warn" (click)="close()">
+            <mat-icon>clear</mat-icon>
+        </button>
+
+    </div>
+
+    <div class="dialog-body form-body" [formGroup]="formGroup">
+
+        <mat-form-field class="width">
+            <input type="text" matInput formControlName="name" />
+            <mat-label>Bezeichnung</mat-label>
+        </mat-form-field>
+
+    </div>
+
+</div>

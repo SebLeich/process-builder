@@ -1,7 +1,7 @@
-import { createEntityAdapter, EntityAdapter, EntityState } from '@ngrx/entity';
+import { createEntityAdapter, EntityAdapter, EntityState, Update } from '@ngrx/entity';
 import { createReducer, on } from '@ngrx/store';
 import { IParam } from '../../globals/i-param';
-import { addIParam, addIParams } from '../actions/i-param.actions';
+import { addIParam, addIParams, updateIParam } from '../actions/i-param.actions';
 
 
 export const featureKey = 'Param';
@@ -40,6 +40,17 @@ export const reducer = createReducer(
       id++;
     }
     return adapter.addMany(output, state);
+  }),
+
+  on(updateIParam, (state: State, { param }) => {
+    let update: Update<IParam> = {
+      'id': param.processTypeIdentifier,
+      'changes': {
+        'name': param.name,
+        'value': param.value
+      }
+    }
+    return adapter.updateOne(update, state);
   }),
 
 );

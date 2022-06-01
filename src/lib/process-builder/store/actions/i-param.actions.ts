@@ -15,4 +15,7 @@ export const addIParams = createAction(
   (params: IParam[]) => ({ params })
 );
 
-
+export const updateIParam = createAction(
+  '[IParam] Update IParams',
+  (param: IParam) => ({ param })
+);

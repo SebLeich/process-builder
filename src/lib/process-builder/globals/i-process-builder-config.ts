@@ -1,4 +1,5 @@
 import { InjectionToken } from "@angular/core";
+import { IErrorGatewayConfig } from "./i-error-gateway-config";
 import { IProcessStatusConfig } from "./i-process-status-config";
 import { ITaskConfig } from "./i-task-config";
 
@@ -14,6 +15,7 @@ export interface IProcessBuilderConfig {
     'hideGroups': boolean;
     'statusConfig': IProcessStatusConfig;
     'taskConfig': ITaskConfig[];
+    'errorGatewayConfig': IErrorGatewayConfig;
 }
 
 export const PROCESS_BUILDER_CONFIG_TOKEN: InjectionToken<IProcessBuilderConfig> = new InjectionToken<IProcessBuilderConfig>("PROCESS_BUILDER_CONFIG");

@@ -2,7 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ReplaySubject } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
-import { FUNCTIONS_CONFIG_TOKEN, IFunction } from '../../globals/i-function';
+import { FUNCTIONS_CONFIG_TOKEN, IFunction } from '../../../globals/i-function';
 
 @Component({
   selector: 'app-function-selection',

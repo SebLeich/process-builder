@@ -13,5 +13,10 @@ export default {
     'statusConfig': {
         'initialStatus': 'initial',
         'finalStatus': 'final'
+    },
+    'errorGatewayConfig': {
+        'errorConnectionName': 'on error',
+        'gatewayName': 'task failed?',
+        'successConnectionName': 'on success'
     }
 } as IProcessBuilderConfig;

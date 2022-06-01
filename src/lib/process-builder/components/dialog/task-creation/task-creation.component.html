@@ -1,0 +1,39 @@
+<div class="body">
+
+    <div class="dialog-navbar">
+
+        <mat-icon class="icon">account_tree</mat-icon>
+        <div class="text">
+            Aufgabe erstellen
+        </div>
+        <button mat-icon-button color="warn" (click)="abort()">
+            <mat-icon>clear</mat-icon>
+        </button>
+
+    </div>
+
+    <div class="dialog-body">
+
+        <mat-tab-group mat-align-tabs="start" (selectedIndexChange)="setStep($event)">
+
+            <mat-tab [label]=(tab.taskCreationStep|taskCreationStep) *ngFor="let tab of data"></mat-tab>
+
+        </mat-tab-group>
+
+        <div class="content-wrapper">
+            <div #dynamicInner></div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+
+        <div class="spacer"></div>
+
+        <div class="control" (click)="finish()">
+            Abschließen
+        </div>
+
+    </div>
+
+</div>

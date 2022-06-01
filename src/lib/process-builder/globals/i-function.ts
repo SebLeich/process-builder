@@ -4,6 +4,7 @@ import { IOutputParam } from "./i-output-param";
 
 export interface IFunction {
     name: string;
+    description?: string;
     inputParams: IInputParam | IInputParam[] | null;
     output: IOutputParam | null;
     pseudoImplementation: (args: any) => any;
