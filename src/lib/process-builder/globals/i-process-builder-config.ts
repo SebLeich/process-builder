@@ -13,6 +13,7 @@ export interface IProcessBuilderConfig {
     'hideDatabases': boolean;
     'hidePools': boolean;
     'hideGroups': boolean;
+    'dynamicParamDefaultNaming': string;
     'statusConfig': IProcessStatusConfig;
     'taskConfig': ITaskConfig[];
     'errorGatewayConfig': IErrorGatewayConfig;

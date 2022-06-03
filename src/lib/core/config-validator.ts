@@ -1,5 +1,7 @@
 import { Injector } from "@angular/core";
-import { bufferTime, filter, ReplaySubject, Subject, timer } from "rxjs";
+import { Store } from "@ngrx/store";
+import { buffer, bufferTime, debounceTime, delay, filter, ReplaySubject, Subject, switchMap, throttleTime, timer } from "rxjs";
+import { ParamCodes } from "src/config/param-codes";
 import bpmnJsEventTypes from "../bpmn-io/bpmn-js-event-types";
 import bpmnJsModules from "../bpmn-io/bpmn-js-modules";
 import { getElementRegistryModule, getModelingModule } from "../bpmn-io/bpmn-modules";
@@ -11,17 +13,20 @@ import shapeTypes from "../bpmn-io/shape-types";
 import { ITaskCreationComponentOutput } from "../process-builder/components/dialog/task-creation/i-task-creation-component-output";
 import { ErrorGatewayEvent } from "../process-builder/globals/error-gateway-event";
 import { IFunction } from "../process-builder/globals/i-function";
+import { IParam } from "../process-builder/globals/i-param";
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from "../process-builder/globals/i-process-builder-config";
 import { ITaskCreationConfig } from "../process-builder/globals/i-task-creation-config";
 import { TaskCreationStep } from "../process-builder/globals/task-creation-step";
 import { ParamPipe } from "../process-builder/pipes/param.pipe";
 import { DialogService } from "../process-builder/services/dialog.service";
+import { addIParam } from "../process-builder/store/actions/i-param.actions";
+import { I_PARAM_STORE_TOKEN, State } from "../process-builder/store/reducers/i-param-reducer";
 import { BPMNJsRepository } from "./bpmn-js-repository";
 
 export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
     let taskCreationSubject = new Subject<ITaskCreationConfig>();
-    taskCreationSubject.pipe(bufferTime(1000), filter(x => x.length > 0)).subscribe((val) => {
+    taskCreationSubject.pipe(buffer(taskCreationSubject.pipe(debounceTime(100))), filter(x => x.length > 0)).subscribe((val) => {
         let service = injector.get(DialogService);
         service.configTaskCreation(val, bpmnJS).subscribe((results) => {
             for (let result of results) handleTaskCreationComponentOutput(result);
@@ -93,13 +98,24 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         }
         getModelingModule(bpmnJS).updateLabel(evt.active.element, f.name);
         if (f.output) {
+            let outputParamCode = f.output.param;
+            if (f.output.param === 'dynamic') {
+                outputParamCode = Math.max(...(Object.values(ParamCodes).filter(x => typeof x === 'number') as number[]), -1) + 1;
+                let param = {
+                    'name': config.dynamicParamDefaultNaming,
+                    'processTypeIdentifier': outputParamCode,
+                    'value': []
+                } as IParam;
+                let paramStore: Store<State> = injector.get(I_PARAM_STORE_TOKEN);
+                paramStore.dispatch(addIParam(param))
+            }
             let fileShape = getModelingModule(bpmnJS).appendShape(evt.active.element, {
                 type: shapeTypes.DataObjectReference,
                 data: {
-                    'outputParam': f.output.param
+                    'outputParam': outputParamCode
                 }
             }, { x: evt.active.element.x + 50, y: evt.active.element.y - 60 });
-            injector.get(ParamPipe).transform(f.output.param).subscribe(paramName => getModelingModule(bpmnJS).updateLabel(fileShape, paramName));
+            injector.get(ParamPipe).transform(outputParamCode).subscribe(paramName => getModelingModule(bpmnJS).updateLabel(fileShape, paramName));
         }
         if (f.canFail) {
             let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
@@ -123,9 +139,9 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
     }
 
     const applyErrorGatewayEntranceConnection = (evt: IConnectionCreatePostExecutedEvent, e: ErrorGatewayEvent) => {
-        if(typeof e !== 'number') return;
+        if (typeof e !== 'number') return;
         let config = injector.get(PROCESS_BUILDER_CONFIG_TOKEN);
-        getModelingModule(bpmnJS).updateLabel(evt.context.connection, e === ErrorGatewayEvent.Success? config.errorGatewayConfig.successConnectionName: config.errorGatewayConfig.errorConnectionName);
+        getModelingModule(bpmnJS).updateLabel(evt.context.connection, e === ErrorGatewayEvent.Success ? config.errorGatewayConfig.successConnectionName : config.errorGatewayConfig.errorConnectionName);
     }
 
     const handleTaskCreationComponentOutput = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {

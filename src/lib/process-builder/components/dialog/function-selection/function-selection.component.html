@@ -20,6 +20,12 @@
 
         </div>
 
+        <div class="function-wrapper" *ngFor="let func of (availableFunctions$|async)" (click)="selectFunction(func)">
+
+            <app-function-preview [func]="func"></app-function-preview>
+
+        </div>
+
     </div>
 
 </div>

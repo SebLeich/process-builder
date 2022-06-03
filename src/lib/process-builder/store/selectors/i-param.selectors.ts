@@ -6,9 +6,9 @@ export const selectIParamState = createFeatureSelector<fromIParam.State>(
     fromIParam.featureKey
 );
 
-export const selectIParam = (code: ParamCodes) => createSelector(
+export const selectIParam = (code: ParamCodes | 'dynamic') => createSelector(
     selectIParamState,
-    (state: fromIParam.State) => state && state.entities ? Object.values(state.entities).find(x => x?.processTypeIdentifier === code) : null
+    (state: fromIParam.State) => code === 'dynamic'? null : state && state.entities ? Object.values(state.entities).find(x => x?.processTypeIdentifier === code) : null
 );
 
 export const selectIParams = () => createSelector(

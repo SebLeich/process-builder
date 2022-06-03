@@ -1,7 +1,11 @@
 import { IFunction } from "src/lib/process-builder/globals/i-function";
+import { PredefinedFunctions } from "src/lib/process-builder/globals/pre-defined-functions";
+import exampleSolution from "./exampleSolution";
 import { ParamCodes } from "./param-codes";
 
 export default [
+    new PredefinedFunctions().customJSMethod(),
+    new PredefinedFunctions().objectToObjectMappingMethod(),
     {
         'inputParams': null,
         'name': 'Request User String Input',
@@ -62,5 +66,15 @@ export default [
             return output;
         },
         'canFail': true
+    } as IFunction,
+    {
+        'inputParams': [],
+        'name': 'Provide exemplary solution',
+        'description': 'method provides an exemplary solution',
+        'output': { 'param': ParamCodes.ExemplarySolution },
+        'pseudoImplementation': () => {
+            return exampleSolution;
+        },
+        'canFail': false
     } as IFunction
 ];

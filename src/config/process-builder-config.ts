@@ -18,5 +18,6 @@ export default {
         'errorConnectionName': 'on error',
         'gatewayName': 'task failed?',
         'successConnectionName': 'on success'
-    }
+    },
+    'dynamicParamDefaultNaming': 'unnamed param'
 } as IProcessBuilderConfig;

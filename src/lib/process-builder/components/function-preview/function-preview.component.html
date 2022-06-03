@@ -14,7 +14,11 @@
 
                 <ng-container *ngIf="inputParams.length === 0; else inputParamsList">
 
-                    Keine Eingangsparameter
+                    <ng-container *ngIf="!func.useDynamicInputParams; else dynamicInputParams">
+
+                        no input arguments
+
+                    </ng-container>
 
                 </ng-container>
 
@@ -24,7 +28,7 @@
 
         <div class="section">
 
-            <div class="section-title">Verarbeitet</div>
+            <div class="section-title">procedure</div>
 
             <div class="section-content">
 
@@ -43,7 +47,7 @@
 
                 <ng-container *ngIf="!func.output; else outputParamPreview">
 
-                    Keine Rückgabe
+                    provides no output
 
                 </ng-container>
 
@@ -59,6 +63,14 @@
 
     <div *ngFor="let param of inputParams">
         {{param.param|param|async}}
+    </div>
+
+</ng-template>
+
+<ng-template #dynamicInputParams>
+
+    <div>
+        {{func.useDynamicInputParams!|dynamicInputParams}}
     </div>
 
 </ng-template>

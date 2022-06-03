@@ -14,6 +14,9 @@ export class FunctionSelectionComponent implements OnInit {
   private _availableFunctions = new ReplaySubject<IFunction[]>(1);
   availableFunctions$ = this._availableFunctions.asObservable();
 
+  private _staticFunctions = new ReplaySubject<IFunction[]>(1);
+  staticFunctions$ = this._staticFunctions.asObservable();
+
   constructor(
     private _ref: MatDialogRef<FunctionSelectionComponent>,
     @Inject(MAT_DIALOG_DATA) private _data: ParamCodes | ParamCodes[] | null,
