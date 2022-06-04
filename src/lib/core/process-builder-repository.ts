@@ -77,4 +77,9 @@ export class ProcessBuilderRepository {
 
     }
 
+    static normalizeIParamName(text: string){
+        text = text.toLowerCase().replace(/[-_?:*%!;¿\s.]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
+        return text.substr(0, 1).toLowerCase() + text.substr(1);
+    }
+
 }

@@ -18,13 +18,14 @@ import { FunctionSelectionComponent } from './components/dialog/function-selecti
 import { FunctionPreviewComponent } from './components/function-preview/function-preview.component';
 import { ParamPipe } from './pipes/param.pipe';
 import { ParamEditorComponent } from './components/dialog/param-editor/param-editor.component';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { TaskCreationComponent } from './components/dialog/task-creation/task-creation.component';
 import { TaskCreationStepPipe } from './pipes/task-creation-step.pipe';
 import { EmbeddedFunctionSelectionComponent } from './components/embedded/embedded-function-selection/embedded-function-selection.component';
 import { EmbeddedConfigureErrorGatewayEntranceConnectionComponent } from './components/embedded/embedded-configure-error-gateway-entrance-connection/embedded-configure-error-gateway-entrance-connection.component';
 import { DynamicInputParamsPipe } from './pipes/dynamic-input-params.pipe';
 import { EmbeddedFunctionImplementationComponent } from './components/embedded/embedded-function-implementation/embedded-function-implementation.component';
+import { CodemirrorModule } from '@ctrl/ngx-codemirror';
 
 
 @NgModule({
@@ -42,7 +43,9 @@ import { EmbeddedFunctionImplementationComponent } from './components/embedded/e
     EmbeddedFunctionImplementationComponent
   ],
   imports: [
+    CodemirrorModule,
     CommonModule,
+    FormsModule,
     HttpClientModule,
     MatButtonModule,
     MatDialogModule,

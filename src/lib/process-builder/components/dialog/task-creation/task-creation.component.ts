@@ -28,12 +28,15 @@ export class TaskCreationComponent implements OnInit {
   currentStepIndex: number = 0;
 
   private _steps: ReplaySubject<ITaskCreationConfig[]> = new ReplaySubject<ITaskCreationConfig[]>(1);
-  private _requireCustomFunctionImplementation = new BehaviorSubject<boolean>(false);
+  private _requireCustomFunctionImplementation = new BehaviorSubject<IElement|null>(null);
   steps$ = combineLatest([this._steps.asObservable(), this._requireCustomFunctionImplementation.asObservable()])
     .pipe(
-      map(([steps, requireCustomFunctionImplementation]: [ITaskCreationConfig[], boolean]) => {
+      map(([steps, requireCustomFunctionImplementation]: [ITaskCreationConfig[], IElement|null]) => {
         let availableSteps: ITaskCreationConfig[] = [...steps];
-        if (requireCustomFunctionImplementation) availableSteps.push({ 'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation } as ITaskCreationConfig);
+        if (requireCustomFunctionImplementation) availableSteps.push({
+          'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
+          'element': requireCustomFunctionImplementation
+        } as ITaskCreationConfig);
         return availableSteps;
       })
     ) as Observable<ITaskCreationConfig[]>;
@@ -59,7 +62,14 @@ export class TaskCreationComponent implements OnInit {
         component.inputParams = BPMNJsRepository.getAvailableInputParams(element)
       }
     };
-    this.stepRegistry[TaskCreationStep.ConfigureFunctionImplementation] = { type: EmbeddedFunctionImplementationComponent };
+    this.stepRegistry[TaskCreationStep.ConfigureFunctionImplementation] = {
+      type: EmbeddedFunctionImplementationComponent,
+      provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
+        console.log(element);
+        let component = arg as EmbeddedFunctionSelectionComponent;
+        component.inputParams = BPMNJsRepository.getAvailableInputParams(element)
+      }
+    };
     for (let step of this.data.steps) this.values.push({ 'config': step, 'value': undefined });
     this.setStep(this.currentStepIndex);
   }
@@ -83,8 +93,14 @@ export class TaskCreationComponent implements OnInit {
 
         if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionSelection) {
           let requireCustomImplementation = (value as IFunction).requireCustomImplementation === true, existingImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation);
-          this._requireCustomFunctionImplementation.next(requireCustomImplementation);
-          if (requireCustomImplementation && !existingImplementation) this.values.push({ 'config': { 'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation } as ITaskCreationConfig, 'value': undefined });
+          this._requireCustomFunctionImplementation.next(step.element);
+          if (requireCustomImplementation && !existingImplementation) this.values.push({
+            'config': {
+              'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
+              'element': step.element
+            } as ITaskCreationConfig,
+            'value': undefined
+          });
           else if (!requireCustomImplementation && existingImplementation) {
             let index = this.values.indexOf(existingImplementation);
             if (index > -1) this.values.splice(index, 1);
@@ -107,7 +123,6 @@ export class TaskCreationComponent implements OnInit {
   }
 
   get unfinished() {
-    console.log(this.values.map(x => x.value));
     return this.values.some(x => typeof x.value === 'undefined');
   }
 

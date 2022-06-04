@@ -35,9 +35,14 @@
               "src/styles.sass",
               "./node_modules/bpmn-js/dist/assets/diagram-js.css",
               "./node_modules/bpmn-js/dist/assets/bpmn-font/css/bpmn.css",
-              "./node_modules/jsoneditor/dist/jsoneditor.min.css"
+              "./node_modules/jsoneditor/dist/jsoneditor.min.css",
+              "./node_modules/codemirror/lib/codemirror.css",
+              "./node_modules/codemirror/theme/idea.css",
+              "./node_modules/codemirror/theme/material.css",
+              "./node_modules/codemirror/addon/fold/foldgutter.css",
+              "./node_modules/codemirror/addon/hint/show-hint.css"
             ],
-            "scripts": []
+            "scripts": [ ]
           },
           "configurations": {
             "production": {
@@ -106,12 +111,18 @@
               "src/assets"
             ],
             "styles": [
+              "src/custom-theme.scss",
               "src/styles.sass",
               "./node_modules/bpmn-js/dist/assets/diagram-js.css",
               "./node_modules/bpmn-js/dist/assets/bpmn-font/css/bpmn.css",
-              "./node_modules/jsoneditor/dist/jsoneditor.min.css"
+              "./node_modules/jsoneditor/dist/jsoneditor.min.css",
+              "./node_modules/codemirror/lib/codemirror.css",
+              "./node_modules/codemirror/theme/idea.css",
+              "./node_modules/codemirror/theme/material.css",
+              "./node_modules/codemirror/addon/fold/foldgutter.css",
+              "./node_modules/codemirror/addon/hint/show-hint.css"
             ],
-            "scripts": []
+            "scripts": [ ]
           }
         }
       }
