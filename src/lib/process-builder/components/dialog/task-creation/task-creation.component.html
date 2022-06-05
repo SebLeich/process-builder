@@ -30,7 +30,7 @@
 
         <div class="spacer"></div>
 
-        <div class="control" (click)="finish()">
+        <div class="control" [ngClass]="{ 'disabled': unfinished }" (click)="finish()">
             Abschließen
         </div>
 

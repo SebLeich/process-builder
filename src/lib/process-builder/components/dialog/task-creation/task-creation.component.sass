@@ -22,9 +22,17 @@
     background-color: #fafafa
     display: flex
     align-items: center
-    padding: 0px 1rem
+    padding: 0px 0.5rem
 
 .footer .control
-    padding: .5rem
+    padding: 0.3rem 0.5rem
     cursor: pointer
-    background-color: white
+    background-color: #404db9
+    color: white
+    border-radius: 3px
+    font-weight: 100
+    transition: all .3s
+
+.footer .control.disabled
+    pointer-events: none
+    opacity: .5

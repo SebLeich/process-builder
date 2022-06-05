@@ -12,7 +12,8 @@ import { IShapeDeleteExecutedEvent } from "../bpmn-io/i-shape-delete-executed-ev
 import shapeTypes from "../bpmn-io/shape-types";
 import { ITaskCreationComponentOutput } from "../process-builder/components/dialog/task-creation/i-task-creation-component-output";
 import { ErrorGatewayEvent } from "../process-builder/globals/error-gateway-event";
-import { IFunction } from "../process-builder/globals/i-function";
+import { FUNCTIONS_CONFIG_TOKEN, IFunction } from "../process-builder/globals/i-function";
+import { IFunctionSelectionModelingData } from "../process-builder/globals/i-function-selection-modeling-data";
 import { IParam } from "../process-builder/globals/i-param";
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from "../process-builder/globals/i-process-builder-config";
 import { ITaskCreationConfig } from "../process-builder/globals/i-task-creation-config";
@@ -41,14 +42,22 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
     _connectionCreatePostExecutedActions[shapeTypes.SequenceFlow] = (evt: IConnectionCreatePostExecutedEvent) => {
         if (evt.context.source.type !== shapeTypes.ExclusiveGateway || evt.context.source.data['gatewayType'] !== 'error_gateway') return;
-        if (!taskCreationSubject) taskCreationSubject = new ReplaySubject<ITaskCreationConfig>();
-        taskCreationSubject.next({ 'taskCreationStep': TaskCreationStep.ConfigureErrorGatewayEntranceConnection, payload: evt, element: evt.context.connection });
+        if (!taskCreationSubject) taskCreationSubject = new ReplaySubject<ITaskCreationConfig>(1);
+        taskCreationSubject.next({
+            taskCreationStep: TaskCreationStep.ConfigureErrorGatewayEntranceConnection,
+            payload: evt,
+            element: evt.context.connection
+        });
     }
 
     _directEditingActivateActions[shapeTypes.Task] = (evt: IDirectEditingEvent) => {
         bpmnJS.get(bpmnJsModules.DirectEditing).cancel();
-        if (!taskCreationSubject) taskCreationSubject = new ReplaySubject<ITaskCreationConfig>();
-        taskCreationSubject.next({ 'taskCreationStep': TaskCreationStep.ConfigureFunctionSelection, payload: evt, element: evt.active.element });
+        if (!taskCreationSubject) taskCreationSubject = new ReplaySubject<ITaskCreationConfig>(1);
+        taskCreationSubject.next({
+            taskCreationStep: TaskCreationStep.ConfigureFunctionSelection,
+            payload: evt,
+            element: evt.active.element
+        });
     }
     _directEditingActivateActions[shapeTypes.DataObjectReference] = (evt: IDirectEditingEvent) => {
         bpmnJS.get(bpmnJsModules.DirectEditing).cancel();
@@ -91,12 +100,22 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         _connectionCreatePostExecutedActions[evt.context.connection.type](evt);
     });
 
-    const applyFunctionSelectionConfig = (evt: IDirectEditingEvent, f: IFunction | null | undefined) => {
+    const applyFunctionSelectionConfig = (evt: IDirectEditingEvent, functionIdentifier: number | null | undefined) => {
+        let f: IFunction = injector.get(FUNCTIONS_CONFIG_TOKEN).find(x => x.identifier === functionIdentifier)!;
         if (!f) {
-            getModelingModule(bpmnJS).removeElements([evt.active.element]);
+            if(!(typeof (evt.active.element.data as IFunctionSelectionModelingData)?.functionIdentifier === 'number')){
+                getModelingModule(bpmnJS).removeElements([evt.active.element]);
+            }
             return;
         }
+
         getModelingModule(bpmnJS).updateLabel(evt.active.element, f.name);
+        let data = {
+            functionIdentifier: f.identifier,
+            customImplementation: evt.active?.element?.data?.customImplementation ?? undefined
+        } as IFunctionSelectionModelingData;
+        evt.active.element.data = data;
+
         if (f.output) {
             let outputParamCode = f.output.param;
             if (f.output.param === 'dynamic') {
@@ -154,6 +173,16 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
             case TaskCreationStep.ConfigureFunctionSelection:
                 applyFunctionSelectionConfig(taskCreationComponentOutput.config.payload, taskCreationComponentOutput.value);
+                break;
+
+            case TaskCreationStep.ConfigureFunctionImplementation:
+                if(!taskCreationComponentOutput.config.element) return;
+                if(!taskCreationComponentOutput.config.element.data) taskCreationComponentOutput.config.element.data = {
+                    functionIdentifier: undefined,
+                    customImplementation: undefined
+                } as IFunctionSelectionModelingData;
+
+                taskCreationComponentOutput.config.element.data.customImplementation = taskCreationComponentOutput.value;
                 break;
 
         }

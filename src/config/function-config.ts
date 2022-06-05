@@ -4,9 +4,9 @@ import exampleSolution from "./exampleSolution";
 import { ParamCodes } from "./param-codes";
 
 export default [
-    new PredefinedFunctions().customJSMethod(),
-    new PredefinedFunctions().objectToObjectMappingMethod(),
+    new PredefinedFunctions().customJSMethod(0),
     {
+        'identifier': 1,
         'inputParams': null,
         'name': 'Request User String Input',
         'description': 'method asks user to insert text and provides the input for further operations',
@@ -19,6 +19,7 @@ export default [
         'canFail': true
     } as IFunction,
     {
+        'identifier': 2,
         'inputParams': null,
         'name': 'Request User Number Input',
         'description': 'method asks user to insert a number and provides the input for further operations',
@@ -31,6 +32,7 @@ export default [
         'canFail': true
     } as IFunction,
     {
+        'identifier': 3,
         'inputParams': null,
         'name': 'Request User Date Input',
         'description': 'method asks user to insert a date and provides the input for further operations',
@@ -43,6 +45,7 @@ export default [
         'canFail': true
     } as IFunction,
     {
+        'identifier': 4,
         'inputParams': [
             { 'optional': false, 'param': ParamCodes.UserStringInput }
         ],
@@ -54,6 +57,7 @@ export default [
         'canFail': false
     } as IFunction,
     {
+        'identifier': 5,
         'inputParams': [
             { 'optional': false, 'param': ParamCodes.UserStringInput }
         ],
@@ -68,6 +72,7 @@ export default [
         'canFail': true
     } as IFunction,
     {
+        'identifier': 6,
         'inputParams': [],
         'name': 'Provide exemplary solution',
         'description': 'method provides an exemplary solution',

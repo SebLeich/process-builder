@@ -14,7 +14,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTabsModule } from '@angular/material/tabs';
 
-import { FunctionSelectionComponent } from './components/dialog/function-selection/function-selection.component';
 import { FunctionPreviewComponent } from './components/function-preview/function-preview.component';
 import { ParamPipe } from './pipes/param.pipe';
 import { ParamEditorComponent } from './components/dialog/param-editor/param-editor.component';
@@ -31,7 +30,6 @@ import { CodemirrorModule } from '@ctrl/ngx-codemirror';
 @NgModule({
   declarations: [
     ProcessBuilderComponent,
-    FunctionSelectionComponent,
     FunctionPreviewComponent,
     ParamPipe,
     ParamEditorComponent,

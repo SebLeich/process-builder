@@ -10,6 +10,7 @@ export interface IModelingModule {
     connect: (origin: IElement, target: IElement) => IConnector;
     removeElements: (elements: IElement[]) => void;
     updateLabel: (element: IElement | IConnector, text: string) => void;
+    updateProperties: (element: IElement | IConnector, data: any) => void;
 }
 
 export interface IElementRegistry {

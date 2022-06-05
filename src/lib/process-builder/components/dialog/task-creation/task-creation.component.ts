@@ -4,7 +4,9 @@ import { BehaviorSubject, combineLatest, map, Observable, of, ReplaySubject, swi
 import { IElement } from 'src/lib/bpmn-io/i-element';
 import { BPMNJsRepository } from 'src/lib/core/bpmn-js-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
-import { IFunction } from 'src/lib/process-builder/globals/i-function';
+import { FUNCTIONS_CONFIG_TOKEN, IFunction } from 'src/lib/process-builder/globals/i-function';
+import { IFunctionSelectionModelingData } from 'src/lib/process-builder/globals/i-function-selection-modeling-data';
+import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
 import { ITaskCreationConfig } from 'src/lib/process-builder/globals/i-task-creation-config';
 import { TaskCreationStep } from 'src/lib/process-builder/globals/task-creation-step';
 import { EmbeddedConfigureErrorGatewayEntranceConnectionComponent } from '../../embedded/embedded-configure-error-gateway-entrance-connection/embedded-configure-error-gateway-entrance-connection.component';
@@ -22,16 +24,20 @@ export class TaskCreationComponent implements OnInit {
 
   @ViewChild('dynamicInner', { static: true, read: ViewContainerRef }) dynamicInner!: ViewContainerRef;
 
-  stepRegistry: { type: Type<IEmbeddedView<any>>, provideInputParams?: (component: IEmbeddedView<any>, element: IElement) => void }[] = [];
+  stepRegistry: {
+    type: Type<IEmbeddedView<any>>,
+    provideInputParams?: (component: IEmbeddedView<any>, element: IElement) => void,
+    autoChangeTabOnValueEmission?: boolean
+  }[] = [];
   values: ITaskCreationComponentOutput[] = [];
 
   currentStepIndex: number = 0;
 
   private _steps: ReplaySubject<ITaskCreationConfig[]> = new ReplaySubject<ITaskCreationConfig[]>(1);
-  private _requireCustomFunctionImplementation = new BehaviorSubject<IElement|null>(null);
+  private _requireCustomFunctionImplementation = new BehaviorSubject<IElement | null>(null);
   steps$ = combineLatest([this._steps.asObservable(), this._requireCustomFunctionImplementation.asObservable()])
     .pipe(
-      map(([steps, requireCustomFunctionImplementation]: [ITaskCreationConfig[], IElement|null]) => {
+      map(([steps, requireCustomFunctionImplementation]: [ITaskCreationConfig[], IElement | null]) => {
         let availableSteps: ITaskCreationConfig[] = [...steps];
         if (requireCustomFunctionImplementation) availableSteps.push({
           'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
@@ -43,7 +49,8 @@ export class TaskCreationComponent implements OnInit {
 
   constructor(
     private _ref: MatDialogRef<TaskCreationComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: ITaskCreationComponentInput
+    @Inject(MAT_DIALOG_DATA) public data: ITaskCreationComponentInput,
+    @Inject(FUNCTIONS_CONFIG_TOKEN) private _functionsConfig: IFunction[]
   ) {
     this._steps.next(data.steps);
   }
@@ -54,23 +61,28 @@ export class TaskCreationComponent implements OnInit {
   finish = () => this._ref.close(this.values);
 
   ngOnInit(): void {
-    this.stepRegistry[TaskCreationStep.ConfigureErrorGatewayEntranceConnection] = { type: EmbeddedConfigureErrorGatewayEntranceConnectionComponent };
+    this.stepRegistry[TaskCreationStep.ConfigureErrorGatewayEntranceConnection] = {
+      type: EmbeddedConfigureErrorGatewayEntranceConnectionComponent
+    };
     this.stepRegistry[TaskCreationStep.ConfigureFunctionSelection] = {
       type: EmbeddedFunctionSelectionComponent,
       provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
         let component = arg as EmbeddedFunctionSelectionComponent;
-        component.inputParams = BPMNJsRepository.getAvailableInputParams(element)
+        component.inputParams = BPMNJsRepository.getAvailableInputParams(element);
       }
     };
     this.stepRegistry[TaskCreationStep.ConfigureFunctionImplementation] = {
       type: EmbeddedFunctionImplementationComponent,
       provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
-        console.log(element);
         let component = arg as EmbeddedFunctionSelectionComponent;
-        component.inputParams = BPMNJsRepository.getAvailableInputParams(element)
+        component.inputParams = BPMNJsRepository.getAvailableInputParams(element);
       }
     };
-    for (let step of this.data.steps) this.values.push({ 'config': step, 'value': undefined });
+    for (let step of this.data.steps) {
+      let preSelected: IFunctionSelectionModelingData | undefined = step.element?.data ?? undefined;
+      this.values.push({ 'config': step, 'value': preSelected?.functionIdentifier });
+      if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionSelection && preSelected) this.validateFunctionSelection(preSelected, step.element);
+    }
     this.setStep(this.currentStepIndex);
   }
 
@@ -85,37 +97,43 @@ export class TaskCreationComponent implements OnInit {
       }
       let component = this.dynamicInner.createComponent(this.stepRegistry[step.taskCreationStep].type);
       if (typeof this.stepRegistry[step.taskCreationStep].provideInputParams === 'function') this.stepRegistry[step.taskCreationStep].provideInputParams!(component.instance, step.element);
+
       component.instance.initialValue = this.values[index].value;
       component.instance.valueChange.subscribe((value: any) => {
 
-        this.values.find(x => x.config === step)!.value = value;
+        this.values.find(x => x.config.taskCreationStep === step.taskCreationStep)!.value = value;
         let nextIndex = index + 1;
 
-        if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionSelection) {
-          let requireCustomImplementation = (value as IFunction).requireCustomImplementation === true, existingImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation);
-          this._requireCustomFunctionImplementation.next(step.element);
-          if (requireCustomImplementation && !existingImplementation) this.values.push({
-            'config': {
-              'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
-              'element': step.element
-            } as ITaskCreationConfig,
-            'value': undefined
-          });
-          else if (!requireCustomImplementation && existingImplementation) {
-            let index = this.values.indexOf(existingImplementation);
-            if (index > -1) this.values.splice(index, 1);
-          }
-          if (requireCustomImplementation) this.setStep(nextIndex);
-          else if (this.finished) this.finish();
+        if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionSelection) this.validateFunctionSelection({ functionIdentifier: value }, step.element);
+
+        if (this.stepRegistry[step.taskCreationStep].autoChangeTabOnValueEmission !== true) return;
+
+        if (this.finished) this.finish();
+        else if (nextIndex < steps.length) {
+          this.setStep(nextIndex);
         }
-        else {
-          if (this.finished) this.finish();
-          else if (nextIndex < steps.length) {
-            this.setStep(nextIndex);
-          }
-        }
+
       });
     });
+  }
+
+  validateFunctionSelection(preSelected: IFunctionSelectionModelingData, element: IElement) {
+    let fun: IFunction = this._functionsConfig.find(x => x.identifier === preSelected.functionIdentifier)!;
+    let requireCustomImplementation = fun && fun.requireCustomImplementation === true, existingImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation);
+    this._requireCustomFunctionImplementation.next(requireCustomImplementation? element: null);
+    if (requireCustomImplementation && !existingImplementation) {
+      this.values.push({
+        'config': {
+          'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
+          'element': element
+        } as ITaskCreationConfig,
+        'value': preSelected.customImplementation
+      });
+    }
+    else if (!requireCustomImplementation && existingImplementation) {
+      let index = this.values.indexOf(existingImplementation);
+      if (index > -1) this.values.splice(index, 1);
+    }
   }
 
   get finished() {

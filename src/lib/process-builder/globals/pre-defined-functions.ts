@@ -2,8 +2,9 @@ import { IFunction } from "./i-function";
 
 export class PredefinedFunctions {
 
-    customJSMethod(name: string = 'custom JS function'): IFunction {
+    customJSMethod(identifier: number, name: string = 'custom JS function'): IFunction {
         return {
+            'identifier': identifier,
             'canFail': true,
             'description': 'a self-written, custom js snippet',
             'inputParams': null,
@@ -16,8 +17,9 @@ export class PredefinedFunctions {
         } as IFunction;
     }
 
-    objectToObjectMappingMethod(name: string = 'object mapping'): IFunction {
+    objectToObjectMappingMethod(identifier: number, name: string = 'object mapping'): IFunction {
         return {
+            'identifier': identifier,
             'canFail': true,
             'description': 'a method for object-to-object mapping',
             'inputParams': null,

@@ -4,6 +4,7 @@ import { IInputParam } from "./i-input-param";
 import { IOutputParam } from "./i-output-param";
 
 export interface IFunction {
+    identifier: number;
     name: string;
     description?: string;
     inputParams: IInputParam | IInputParam[] | null;

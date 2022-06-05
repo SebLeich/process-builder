@@ -1,30 +1,35 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { filter, Subject, Subscription, take } from 'rxjs';
+import { debounceTime, filter, ReplaySubject, Subject, Subscription, take } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
 import { ProcessBuilderRepository } from 'src/lib/core/process-builder-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
 import { State } from 'src/lib/process-builder/store/reducers/i-param-reducer';
 import { selectIParams } from 'src/lib/process-builder/store/selectors/i-param.selectors';
+import { syntaxTree } from "@codemirror/language";
+import { autocompletion, CompletionContext } from "@codemirror/autocomplete";
+import { EditorState, Text } from '@codemirror/state';
+import { basicSetup, EditorView } from '@codemirror/basic-setup';
+import { javascript } from '@codemirror/lang-javascript';
 
 @Component({
   selector: 'app-embedded-function-implementation',
   templateUrl: './embedded-function-implementation.component.html',
   styleUrls: ['./embedded-function-implementation.component.sass']
 })
-export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<string>, AfterViewInit, OnDestroy, OnInit {
+export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<Text>, AfterViewInit, OnDestroy {
 
   @Input() inputParams!: ParamCodes | ParamCodes[] | null;
-  @Input() initialValue: string | undefined;
+  @Input() initialValue: Text | undefined;
 
-  @Output() valueChange: EventEmitter<string> = new EventEmitter<string>();
+  @Output() valueChange: EventEmitter<Text> = new EventEmitter<Text>();
 
   @ViewChild('codeBody', { static: true, read: ElementRef }) codeBody!: ElementRef<HTMLDivElement>;
   codeMirror!: EditorView;
 
   globalsInjector: any = {
     'const': { type: 'variable' },
-    'main()': { type: 'function', apply: 'function main(){\n\n}' },
+    'main()': { type: 'function', apply: 'function main(){\n  // your code here\n}' },
     'let': { type: 'variable' },
     'parseInt()': { type: 'function' },
     'var': { type: 'variable' },
@@ -35,15 +40,36 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<st
     'var2': { type: 'variable' }
   };
 
-  /**
-   * 
-   */
+  private _implementationChanged = new ReplaySubject<Text>(1);
+  implementationChanged$ = this._implementationChanged.asObservable();
 
   private _subscriptions: Subscription[] = [];
 
   constructor(
     private _store: Store<State>,
   ) { }
+
+  ngAfterViewInit(): void {
+    this._subscriptions.push(...[
+      this.prepareInjector().subscribe({
+        complete: () => {
+          this.codeMirror = new EditorView({
+            state: this.state(),
+            parent: this.codeBody.nativeElement
+          });
+        }
+      }),
+      this.implementationChanged$.pipe(debounceTime(100)).subscribe(v => {
+        console.log(v);
+        this.valueChange.emit(v);
+      })
+    ]);
+  }
+
+  ngOnDestroy(): void {
+    for (let sub of this._subscriptions) sub.unsubscribe();
+    this._subscriptions = [];
+  }
 
   prepareInjector() {
     let subject = new Subject<void>();
@@ -54,7 +80,6 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<st
         .subscribe(allParams => {
           for (let key of Object.keys(this.paramInjector)) delete this.paramInjector[key];
           for (let param of allParams) this.paramInjector[ProcessBuilderRepository.normalizeIParamName(param!.name)] = ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(param!.value);
-          console.log(this.paramInjector);
           subject.next();
           subject.complete();
         })
@@ -62,30 +87,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<st
     return subject.asObservable();
   }
 
-  ngAfterViewInit(): void {
-    this._subscriptions.push(...[
-      this.prepareInjector().subscribe({
-        complete: () => {
-          this.codeMirror = new EditorView({
-            state: this.state,
-            parent: this.codeBody.nativeElement
-          });
-        }
-      })
-    ]);
-  }
-
-  ngOnDestroy(): void {
-    for (let sub of this._subscriptions) sub.unsubscribe();
-    this._subscriptions = [];
-  }
-
-  ngOnInit(): void {
-
-  }
-
   complete = (context: CompletionContext) => {
-    console.log(syntaxTree(context.state));
     let nodeBefore = syntaxTree(context.state).resolveInner(context.pos, -1);
     console.log(nodeBefore.name, nodeBefore.parent?.name, this.paramInjector);
 
@@ -106,48 +108,23 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<st
     return null
   }
 
-  state = EditorState.create({
-    doc: "/**\n * write your custom code in the main method\n */\n\nfunction main() {\n    // your code\n}\n",
+  state = () => EditorState.create({
+    doc: this.initialValue ?? "/**\n * write your custom code in the main method\n */\n\nfunction main() {\n  // your code\n}\n",
     extensions: [
       basicSetup,
       autocompletion({ override: [this.complete] }),
-      javascript()
+      javascript(),
+      EditorView.updateListener.of(() => this._implementationChanged.next(this.codeMirror.state.doc))
     ]
   });
 
 }
 
-import { autocompletion, CompletionContext } from "@codemirror/autocomplete"
-import { EditorState } from '@codemirror/state';
-import { basicSetup, EditorView } from '@codemirror/basic-setup';
-import { javascript, javascriptLanguage } from '@codemirror/lang-javascript';
-
-function myCompletions(context: CompletionContext) {
-  console.log(context);
-  let word = context.matchBefore(/\w*/);
-  console.log(word);
-  if (!word || word.from == word.to && !context.explicit) return null;
-
-  return {
-    from: word.from,
-    options: [
-      { label: "match", type: "keyword" },
-      { label: "hello", type: "variable", info: "(World)" },
-      { label: "magic", type: "text", apply: "⠁⭒*.✩.*⭒⠁", detail: "macro" }
-    ]
-  }
-}
-
-javascriptLanguage.data.of({
-  autocomplete: myCompletions
-})
-
-import { syntaxTree } from "@codemirror/language"
-
 const completePropertyAfter = [
   ".",
   "?."
 ]
+
 const dontCompleteIn = [
   "(",
   "{",
@@ -165,10 +142,9 @@ function completeProperties(from: number, object: { type: string, apply?: string
   for (let name in object) {
     let option = {
       label: name,
-      type: object.type,
-      apply: object.apply ?? name
+      type: (object as any)[name].type,
+      apply: (object as any)[name].apply ?? name
     };
-    console.log(option);
     options.push(option);
   }
   return {
@@ -178,7 +154,7 @@ function completeProperties(from: number, object: { type: string, apply?: string
   }
 }
 
-function byString (o: object, s: string) {
+function byString(o: object, s: string) {
   s = s.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
   s = s.replace(/^\./, '');           // strip a leading dot
   var a = s.split('.');

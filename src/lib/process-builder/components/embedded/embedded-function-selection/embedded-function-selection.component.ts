@@ -11,17 +11,17 @@ import { showAnimation } from 'src/lib/shared/animations/show';
   styleUrls: ['./embedded-function-selection.component.sass'],
   animations: [showAnimation]
 })
-export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<IFunction>, OnDestroy, OnInit {
+export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>, OnDestroy, OnInit {
 
   @Input() inputParams!: ParamCodes | ParamCodes[] | null;
-  @Input() initialValue: IFunction | undefined;
+  @Input() initialValue: number | undefined;
 
-  @Output() valueChange: EventEmitter<IFunction> = new EventEmitter<IFunction>();
+  @Output() valueChange: EventEmitter<number> = new EventEmitter<number>();
 
   private _availableFunctions = new ReplaySubject<IFunction[]>(1);
   availableFunctions$ = this._availableFunctions.asObservable();
 
-  selection: IFunction | undefined;
+  selection: number | undefined;
 
   constructor(
     @Inject(FUNCTIONS_CONFIG_TOKEN) private _functions: IFunction[],
@@ -37,8 +37,8 @@ export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<IFuncti
   }
 
   selectFunction(func: IFunction) {
-    this.selection = func;
-    this.valueChange.emit(func);
+    this.selection = func.identifier;
+    this.valueChange.emit(func.identifier);
   }
 
   private _setFunctions() {
