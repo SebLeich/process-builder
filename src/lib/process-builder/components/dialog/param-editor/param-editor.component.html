@@ -4,7 +4,7 @@
 
         <mat-icon class="icon">edit</mat-icon>
         <div class="text">
-            Parameter bearbeiten
+            Edit parameter
         </div>
         <button mat-icon-button color="warn" (click)="close()">
             <mat-icon>clear</mat-icon>
@@ -14,12 +14,32 @@
 
     <div class="dialog-body form-body" [formGroup]="formGroup">
 
-        <mat-form-field class="width">
-            <input type="text" matInput formControlName="name" />
-            <mat-label>Bezeichnung</mat-label>
-        </mat-form-field>
+        <div class="param-naming-wrapper">
 
-        <div class="structure-editor-wrapper" #parameterBody></div>
+            <mat-form-field class="width">
+                <input type="text" matInput formControlName="name" />
+                <mat-label>param name</mat-label>
+            </mat-form-field>
+
+        </div>
+
+        <mat-tab-group mat-align-tabs="start">
+
+            <mat-tab label="design">
+
+                <div class="structure-editor-wrapper" #parameterBody></div>
+
+            </mat-tab>
+
+            <mat-tab label="import from flow">
+
+                <div class="hint">
+                    dynamically calculate data structures as a result of provided pseudo inputs
+                </div>
+
+            </mat-tab>
+
+        </mat-tab-group>
 
     </div>
 

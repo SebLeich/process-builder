@@ -4,9 +4,13 @@ import { ProcessBuilderComponent } from './components/process-builder/process-bu
 import { RouterModule } from '@angular/router';
 import { HttpClientModule } from '@angular/common/http';
 import { Store, StoreModule } from '@ngrx/store';
-import * as fromState from './store/reducers/i-param-reducer';
 import { EffectsModule } from '@ngrx/effects';
+
+import * as fromIParamState from './store/reducers/i-param.reducer';
 import { IParamEffects } from './store/effects/i-param.effects';
+
+import * as fromIFunctionState from './store/reducers/i-function.reducer';
+import { IFunctionEffects } from './store/effects/i-function.effects';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
@@ -25,6 +29,8 @@ import { EmbeddedConfigureErrorGatewayEntranceConnectionComponent } from './comp
 import { DynamicInputParamsPipe } from './pipes/dynamic-input-params.pipe';
 import { EmbeddedFunctionImplementationComponent } from './components/embedded/embedded-function-implementation/embedded-function-implementation.component';
 import { CodemirrorModule } from '@ctrl/ngx-codemirror';
+import { ReturnValueStatusPipe } from './pipes/return-value-status.pipe';
+import { loadIFunctions } from './store/actions/i-function.actions';
 
 
 @NgModule({
@@ -38,7 +44,8 @@ import { CodemirrorModule } from '@ctrl/ngx-codemirror';
     EmbeddedFunctionSelectionComponent,
     EmbeddedConfigureErrorGatewayEntranceConnectionComponent,
     DynamicInputParamsPipe,
-    EmbeddedFunctionImplementationComponent
+    EmbeddedFunctionImplementationComponent,
+    ReturnValueStatusPipe
   ],
   imports: [
     CodemirrorModule,
@@ -54,12 +61,24 @@ import { CodemirrorModule } from '@ctrl/ngx-codemirror';
     RouterModule.forChild([
       { path: '**', component: ProcessBuilderComponent }
     ]),
-    StoreModule.forFeature(fromState.featureKey, fromState.reducer),
+
+    StoreModule.forFeature(fromIParamState.featureKey, fromIParamState.reducer),
     EffectsModule.forFeature([IParamEffects]),
+
+    StoreModule.forFeature(fromIFunctionState.featureKey, fromIFunctionState.reducer),
+    EffectsModule.forFeature([IFunctionEffects]),
+
   ],
   providers: [
     ParamPipe,
-    { provide: fromState.I_PARAM_STORE_TOKEN, useExisting: Store }
+    { provide: fromIParamState.I_PARAM_STORE_TOKEN, useExisting: Store },
+    { provide: fromIFunctionState.I_FUNCTION_STORE_TOKEN, useExisting: Store }
   ]
 })
-export class ProcessBuilderModule { }
+export class ProcessBuilderModule {
+
+  constructor(private _iFunctionStore: Store<fromIFunctionState.State>) {
+    this._iFunctionStore.dispatch(loadIFunctions());
+  }
+
+}

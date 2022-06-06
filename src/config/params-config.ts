@@ -7,28 +7,32 @@ export default [
         'value': [
             { 'name': 'value', 'type': 'string', 'defaultValue': 'exemplary user string input' }
         ],
-        'name': 'user string input'
+        'name': 'user string input',
+        'normalizedName': 'userStringInput'
     } as IParam,
     {
         'processTypeIdentifier': ParamCodes.ToUpperCaseResult,
         'value': [
             { 'name': 'value', 'type': 'string', 'defaultValue': 'exemplary user string input - uppercase' }
         ],
-        'name': 'user string input uppercase'
+        'name': 'user string input uppercase',
+        'normalizedName': 'uppercaseUserStringInput'
     } as IParam,
     {
         'processTypeIdentifier': ParamCodes.UserDateInput,
         'value': [
             { 'name': 'value', 'type': 'string', 'defaultValue': 'exemplary user date input' }
         ],
-        'name': 'user date input'
+        'name': 'user date input',
+        'normalizedName': 'userDateInput'
     } as IParam,
     {
         'processTypeIdentifier': ParamCodes.UserNumberInput,
         'value': [
             { 'name': 'value', 'type': 'number', 'defaultValue': 'exemplary user numeric input' }
         ],
-        'name': 'numeric user input'
+        'name': 'numeric user input',
+        'normalizedName': 'userNumberInput'
     } as IParam,
     {
         'processTypeIdentifier': ParamCodes.ExemplarySolution,
@@ -55,6 +59,7 @@ export default [
             },
             { 'name': '_Algorithm', 'type': 'string', 'defaultValue': 'ABC' },
         ],
-        'name': 'exemplary solution'
+        'name': 'exemplary solution',
+        'normalizedName': 'exemplarySolution'
     } as IParam,
 ];

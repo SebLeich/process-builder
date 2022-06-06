@@ -33,7 +33,11 @@
             <div class="section-content">
 
                 <mat-icon>settings</mat-icon>
-                <div class="function-description">{{func.description}}</div>
+                <div class="function-description">
+                    
+                    <textarea matInput rows="3" [(ngModel)]="func.description" placeholder="no procedure definition provided" (click)="$event.preventDefault()"></textarea>
+
+                </div>
                 
             </div>
 

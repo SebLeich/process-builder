@@ -1,6 +1,6 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { ParamCodes } from 'src/config/param-codes';
-import * as fromIParam from '../reducers/i-param-reducer';
+import * as fromIParam from '../reducers/i-param.reducer';
 
 export const selectIParamState = createFeatureSelector<fromIParam.State>(
     fromIParam.featureKey

@@ -1,5 +1,25 @@
-<div class="body">
+<div class="body" [formGroup]="formGroup">
+
+    <div class="method-name-wrapper">
+
+        <mat-form-field class="width">
+            <mat-label>method name</mat-label>
+            <input matInput type="text" formControlName="name" />
+        </mat-form-field>
+        
+    </div>
 
     <div #codeBody class="code-body"></div>
+
+    <div class="footer">
+        {{returnValueStatus$|async|returnValueStatus}}
+
+        <ng-container *ngIf="(returnValueStatus$|async) === MethodEvaluationStatus.ReturnValueFound">
+
+            <input type="text" placeholder="param name" class="param-name-input" [value]="config.dynamicParamDefaultNaming" formControlName="outputParamName" />
+
+        </ng-container>
+
+    </div>
 
 </div>

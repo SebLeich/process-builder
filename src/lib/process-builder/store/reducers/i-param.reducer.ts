@@ -30,14 +30,24 @@ export const reducer = createReducer(
   initialState,
 
   on(addIParam, (state: State, { param }) => {
-    return adapter.addOne({ 'processTypeIdentifier': nextId(state), 'value': param.value, 'name': param.name  }, state);
+    return adapter.addOne({
+      'processTypeIdentifier': nextId(state),
+      'value': param.value,
+      'name': param.name,
+      'normalizedName': param.normalizedName
+    }, state);
   }),
 
   on(addIParams, (state: State, { params }) => {
     let output: IParam[] = [];
     let id = nextId(state);
     for (let param of params) {
-      output.push({ 'processTypeIdentifier': id, 'value': param.value, 'name': param.name });
+      output.push({
+        'processTypeIdentifier': nextId(state),
+        'value': param.value,
+        'name': param.name,
+        'normalizedName': param.normalizedName
+      });
       id++;
     }
     return adapter.addMany(output, state);

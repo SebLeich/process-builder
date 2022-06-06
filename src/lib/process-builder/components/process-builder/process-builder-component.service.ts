@@ -14,7 +14,7 @@ import CliModule from 'bpmn-js-cli';
 import { ProcessBuilderService } from '../../services/process-builder.service';
 import { BehaviorSubject, delay, Observable, Subject, Subscription, take } from 'rxjs';
 import { Store } from '@ngrx/store';
-import { State } from '../../store/reducers/i-param-reducer';
+import { State } from '../../store/reducers/i-param.reducer';
 import { loadIParams } from '../../store/actions/i-param.actions';
 import { selectIParams } from '../../store/selectors/i-param.selectors';
 import { startEventFilter } from 'src/lib/bpmn-io/rxjs-operators';

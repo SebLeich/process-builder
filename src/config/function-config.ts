@@ -9,6 +9,7 @@ export default [
         'identifier': 1,
         'inputParams': null,
         'name': 'Request User String Input',
+        'normalizedName': 'requestUserStringInput',
         'description': 'method asks user to insert text and provides the input for further operations',
         'output': { 'param': ParamCodes.UserStringInput },
         'pseudoImplementation': () => {
@@ -22,6 +23,7 @@ export default [
         'identifier': 2,
         'inputParams': null,
         'name': 'Request User Number Input',
+        'normalizedName': 'requestUserNumberInput',
         'description': 'method asks user to insert a number and provides the input for further operations',
         'output': { 'param': ParamCodes.UserNumberInput },
         'pseudoImplementation': () => {
@@ -35,6 +37,7 @@ export default [
         'identifier': 3,
         'inputParams': null,
         'name': 'Request User Date Input',
+        'normalizedName': 'requestUserDateInput',
         'description': 'method asks user to insert a date and provides the input for further operations',
         'output': { 'param': ParamCodes.UserDateInput },
         'pseudoImplementation': () => {
@@ -50,6 +53,7 @@ export default [
             { 'optional': false, 'param': ParamCodes.UserStringInput }
         ],
         'name': 'Log user input to console',
+        'normalizedName': 'logUserInputToConsole',
         'description': 'method logs the inputs to the console',
         'pseudoImplementation': (inp: string) => {
             console.log(`${inp}`);
@@ -62,6 +66,7 @@ export default [
             { 'optional': false, 'param': ParamCodes.UserStringInput }
         ],
         'name': 'Convert user input to uppercase',
+        'normalizedName': 'convertUserInputToUppercase',
         'description': 'method converts user input to uppercase',
         'output': { 'param': ParamCodes.ToUpperCaseResult },
         'pseudoImplementation': (inp: string) => {
@@ -75,6 +80,7 @@ export default [
         'identifier': 6,
         'inputParams': [],
         'name': 'Provide exemplary solution',
+        'normalizedName': 'provideExemplarySolution',
         'description': 'method provides an exemplary solution',
         'output': { 'param': ParamCodes.ExemplarySolution },
         'pseudoImplementation': () => {

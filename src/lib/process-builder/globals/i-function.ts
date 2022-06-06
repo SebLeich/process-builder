@@ -6,13 +6,14 @@ import { IOutputParam } from "./i-output-param";
 export interface IFunction {
     identifier: number;
     name: string;
-    description?: string;
+    normalizedName?: string;
+    description?: string | null;
     inputParams: IInputParam | IInputParam[] | null;
     useDynamicInputParams?: undefined | boolean | IDynamicInputParamsConfig;
     output: IOutputParam | null;
     pseudoImplementation: (args: any) => any;
     canFail: boolean;
-    payload?: any;
+    customImplementation?: any;
     requireCustomImplementation?: boolean;
 }
 

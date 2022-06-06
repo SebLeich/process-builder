@@ -6,10 +6,11 @@ import JSONEditor from 'jsoneditor';
 import { combineLatest, debounceTime, ReplaySubject, Subject, Subscription, take } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
 import { ProcessBuilderRepository } from 'src/lib/core/process-builder-repository';
+import { FUNCTIONS_CONFIG_TOKEN, IFunction } from 'src/lib/process-builder/globals/i-function';
 import { IParam } from 'src/lib/process-builder/globals/i-param';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
 import { updateIParam } from 'src/lib/process-builder/store/actions/i-param.actions';
-import { State } from 'src/lib/process-builder/store/reducers/i-param-reducer';
+import { State } from 'src/lib/process-builder/store/reducers/i-param.reducer';
 import { selectIParam } from 'src/lib/process-builder/store/selectors/i-param.selectors';
 
 @Component({
@@ -36,6 +37,7 @@ export class ParamEditorComponent implements AfterViewInit, OnDestroy, OnInit {
     private _ref: MatDialogRef<ParamEditorComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ParamCodes | 'dynamic',
     @Inject(PROCESS_BUILDER_CONFIG_TOKEN) public config: IProcessBuilderConfig,
+    @Inject(FUNCTIONS_CONFIG_TOKEN) private _functions: IFunction[],
     private _formBuilder: FormBuilder
   ) {
     this.formGroup = this._formBuilder.group({
@@ -55,13 +57,21 @@ export class ParamEditorComponent implements AfterViewInit, OnDestroy, OnInit {
   }
 
   ngAfterViewInit(): void {
-    combineLatest([this.editor$, this._store.select(selectIParam(this.data))])
-      .pipe(take(1))
-      .subscribe(([editor, param]: [JSONEditor, IParam | null | undefined]) => {
-        let converted = param? ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(param.value): { };
-        editor.set(converted);
-        editor.expandAll();
-      });
+    this._subscriptions.push(...[
+      this._store.select(selectIParam(this.data)).subscribe(param => {
+        let functions = this._functions.filter(x => x.output?.param === param ?? false);
+        for(let func of functions){
+          
+        }
+      }),
+      combineLatest([this.editor$, this._store.select(selectIParam(this.data))])
+        .pipe(take(1))
+        .subscribe(([editor, param]: [JSONEditor, IParam | null | undefined]) => {
+          let converted = param ? ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(param.value) : {};
+          editor.set(converted);
+          editor.expandAll();
+        })
+    ]);
     let instance = new JSONEditor(this.parameterBody.nativeElement, {
       'onChangeJSON': (value: object) => this._jsonChanged.next(value)
     });
@@ -87,10 +97,10 @@ export class ParamEditorComponent implements AfterViewInit, OnDestroy, OnInit {
     });
   }
 
-  get nameControl(){
+  get nameControl() {
     return this.formGroup.controls['name'];
   }
-  get processTypeIdentifierControl(){
+  get processTypeIdentifierControl() {
     return this.formGroup.controls['processTypeIdentifier'];
   }
   get valueControl() {

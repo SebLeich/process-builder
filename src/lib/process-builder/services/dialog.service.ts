@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Inject, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Observable } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
@@ -6,6 +6,7 @@ import { ParamEditorComponent } from '../components/dialog/param-editor/param-ed
 import { ITaskCreationComponentInput } from '../components/dialog/task-creation/i-task-creation-component-input';
 import { ITaskCreationComponentOutput } from '../components/dialog/task-creation/i-task-creation-component-output';
 import { TaskCreationComponent } from '../components/dialog/task-creation/task-creation.component';
+import { FUNCTIONS_CONFIG_TOKEN, IFunction } from '../globals/i-function';
 import { ITaskCreationConfig } from '../globals/i-task-creation-config';
 
 @Injectable({
@@ -14,7 +15,8 @@ import { ITaskCreationConfig } from '../globals/i-task-creation-config';
 export class DialogService {
 
   constructor(
-    private _dialog: MatDialog
+    private _dialog: MatDialog,
+    @Inject(FUNCTIONS_CONFIG_TOKEN) public funcs: IFunction[]
   ) { }
 
   configTaskCreation(steps: ITaskCreationConfig[], bpmnJS: any): Observable<ITaskCreationComponentOutput[]> {
