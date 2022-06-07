@@ -16,6 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -32,6 +33,7 @@ import { EmbeddedFunctionImplementationComponent } from './components/embedded/e
 import { CodemirrorModule } from '@ctrl/ngx-codemirror';
 import { ReturnValueStatusPipe } from './pipes/return-value-status.pipe';
 import { loadIFunctions } from './store/actions/i-function.actions';
+import { EmbeddedParamEditorComponent } from './components/embedded/embedded-param-editor/embedded-param-editor.component';
 
 
 @NgModule({
@@ -46,7 +48,8 @@ import { loadIFunctions } from './store/actions/i-function.actions';
     EmbeddedConfigureErrorGatewayEntranceConnectionComponent,
     DynamicInputParamsPipe,
     EmbeddedFunctionImplementationComponent,
-    ReturnValueStatusPipe
+    ReturnValueStatusPipe,
+    EmbeddedParamEditorComponent
   ],
   imports: [
     CodemirrorModule,
@@ -58,8 +61,9 @@ import { loadIFunctions } from './store/actions/i-function.actions';
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
     MatTabsModule,
-    
+    MatSlideToggleModule,
     ReactiveFormsModule,
     RouterModule.forChild([
       { path: '**', component: ProcessBuilderComponent }

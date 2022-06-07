@@ -12,6 +12,8 @@
             <input matInput type="text" formControlName="outputParamName" />
         </mat-form-field>
 
+        <mat-slide-toggle formControlName="canFail">{{canFailControl.value? 'can fail': 'can not fail'}}</mat-slide-toggle>
+
         <div class="spacer"></div>
 
         <div class="loading-wrapper">

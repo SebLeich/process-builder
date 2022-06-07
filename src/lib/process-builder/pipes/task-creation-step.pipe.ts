@@ -12,6 +12,7 @@ export class TaskCreationStepPipe implements PipeTransform {
     this.config[TaskCreationStep.ConfigureErrorGatewayEntranceConnection] = 'error input: event type';
     this.config[TaskCreationStep.ConfigureFunctionSelection] = 'select function';
     this.config[TaskCreationStep.ConfigureFunctionImplementation] = 'implementation';
+    this.config[TaskCreationStep.ConfigureFunctionOutput] = 'output structure';
   }
 
   transform(value: TaskCreationStep): string {

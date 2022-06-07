@@ -82,7 +82,6 @@ export class ProcessBuilderRepository {
         let jsText = ((doc as any).text as string[]).join('\n');
 
         let main: (injector: any) => any | Promise<any> = eval(jsText);
-        debugger;
         if (this._returnsPromise(main)) (main(injector) as Promise<any>)
             .then((result: any) => subject.next(result))
             .catch((error: any) => subject.error(error))

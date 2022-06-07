@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, filter, map, Observable, of, ReplaySubject, switchMap, take } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, interval, map, Observable, of, ReplaySubject, Subject, switchMap, take } from 'rxjs';
 import { IElement } from 'src/lib/bpmn-io/i-element';
 import { BPMNJsRepository } from 'src/lib/core/bpmn-js-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
@@ -21,6 +21,9 @@ import { selectIParam } from 'src/lib/process-builder/store/selectors/i-param.se
 import { IParam } from 'src/lib/process-builder/globals/i-param';
 import { ProcessBuilderRepository } from 'src/lib/core/process-builder-repository';
 import { HttpClient } from '@angular/common/http';
+import { EmbeddedParamEditorComponent } from '../../embedded/embedded-param-editor/embedded-param-editor.component';
+import { CodemirrorRepository } from 'src/lib/core/codemirror-repository';
+import { MethodEvaluationStatus } from 'src/lib/process-builder/globals/method-evaluation-status';
 
 @Component({
   selector: 'app-task-creation',
@@ -43,18 +46,36 @@ export class TaskCreationComponent implements OnInit {
 
   private _steps: ReplaySubject<ITaskCreationConfig[]> = new ReplaySubject<ITaskCreationConfig[]>(1);
   private _hasCustomImplementation = new BehaviorSubject<IElement | null>(null);
+  private _hasOutputParam = new BehaviorSubject<boolean>(false);
+
+  hasOutputParam$ = this._hasOutputParam.asObservable();
   steps$ = combineLatest([this._steps.asObservable(), this._hasCustomImplementation.asObservable()])
     .pipe(
       map(([steps, hasCustomImplementation]: [ITaskCreationConfig[], IElement | null]) => {
         let availableSteps: ITaskCreationConfig[] = [...steps];
-        if (hasCustomImplementation) availableSteps.push({
-          'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
-          'element': hasCustomImplementation
-        } as ITaskCreationConfig);
+        if (hasCustomImplementation) {
+          availableSteps.push(...[
+            {
+              'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
+              'element': hasCustomImplementation
+            } as ITaskCreationConfig,
+            {
+              'taskCreationStep': TaskCreationStep.ConfigureFunctionOutput,
+              'element': hasCustomImplementation,
+              'disabled$': this.hasOutputParam$.pipe(map(x => x === true ? false : true))
+            } as ITaskCreationConfig
+          ]);
+        }
         return availableSteps;
       })
     ) as Observable<ITaskCreationConfig[]>;
-  
+
+  private _statusMessage: Subject<string> = new Subject<string>();
+  statusMessage$ = combineLatest([this._statusMessage.asObservable(), this._statusMessage.pipe(switchMap(() => interval(1000)))])
+    .pipe(map(([val, time]: [string, number]) => {
+      return time < 5 ? val : null;
+    }));
+
   currentStep$ = combineLatest([this.steps$, this.currentStepIndex$]).pipe(map(([steps, index]) => steps[index]));
 
   constructor(
@@ -90,6 +111,13 @@ export class TaskCreationComponent implements OnInit {
         component.inputParams = BPMNJsRepository.getAvailableInputParams(element);
       }
     };
+    this.stepRegistry[TaskCreationStep.ConfigureFunctionOutput] = {
+      type: EmbeddedParamEditorComponent,
+      provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
+        let component = arg as EmbeddedFunctionSelectionComponent;
+        component.inputParams = BPMNJsRepository.getAvailableInputParams(element);
+      }
+    };
     for (let step of this.data.steps) {
       let preSelected: number | undefined = step.element?.data ?? undefined;
       this.values.push({ 'config': step, 'value': preSelected });
@@ -117,6 +145,10 @@ export class TaskCreationComponent implements OnInit {
         let nextIndex = index + 1;
 
         if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionSelection) this.validateFunctionSelection(value, step.element);
+        if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation) {
+          let evaluationResult = CodemirrorRepository.evaluateCustomMethod(undefined, (value as IEmbeddedFunctionImplementationData).implementation);
+          this._hasOutputParam.next(evaluationResult === MethodEvaluationStatus.ReturnValueFound);
+        }
 
         if (this.stepRegistry[step.taskCreationStep].autoChangeTabOnValueEmission !== true) return;
 
@@ -129,44 +161,62 @@ export class TaskCreationComponent implements OnInit {
     });
   }
 
-  testImplementation(){
-
+  testImplementation() {
     let customImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation);
-    if(!customImplementation) return;
+    if (!customImplementation) return;
     let result = ProcessBuilderRepository.testMethodAndGetResponse((customImplementation.value as IEmbeddedFunctionImplementationData).implementation, {
       'httpClient': this._httpClient
     });
-    result.subscribe({ 'next': v => console.log(v) });
+    result.subscribe({
+      'next': (result: any) => {
+        let parsed: string = typeof result === 'object'? JSON.stringify(result): typeof result === 'number'? result.toString(): result;
+        this._statusMessage.next(`succeeded! received: ${parsed}`);
+        let outputParamStruct = ProcessBuilderRepository.extractObjectIParams(result);
+        console.log(outputParamStruct);
+      }
+    });
   }
 
   validateFunctionSelection(preSelected: number, element: IElement) {
-
     this._funcStore.select(selectIFunction(preSelected)).pipe(
       take(1),
       filter(x => x ? true : false),
       switchMap((fun: IFunction | null | undefined) => combineLatest([of(fun), this._paramStore.select(selectIParam(fun?.output?.param))]))
     ).subscribe(([fun, outputParam]: [IFunction | null | undefined, IParam | null | undefined]) => {
-      let hasCustomImplementation = fun && (fun.requireCustomImplementation === true || fun.customImplementation), existingImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation);
+      let hasCustomImplementation = fun && (fun.requireCustomImplementation === true || fun.customImplementation), existingImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation), existingOutputConfig = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput);
       this._hasCustomImplementation.next(hasCustomImplementation ? element : null);
       if (hasCustomImplementation && !existingImplementation) {
-        this.values.push({
+        let data = {
+          'implementation': fun?.customImplementation,
+          'canFail': fun?.canFail,
+          'name': fun?.name,
+          'normalizedName': fun?.normalizedName,
+          'outputParamName': outputParam?.name,
+          'normalizedOutputParamName': outputParam?.normalizedName
+        } as IEmbeddedFunctionImplementationData;
+        this.values.push(...[{
           'config': {
             'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
             'element': element
           } as ITaskCreationConfig,
-          'value': {
-            'implementation': fun?.customImplementation,
-            'canFail': fun?.canFail,
-            'name': fun?.name,
-            'normalizedName': fun?.normalizedName,
-            'outputParamName': outputParam?.name,
-            'normalizedOutputParamName': outputParam?.normalizedName
-          } as IEmbeddedFunctionImplementationData
-        });
+          'value': data
+        }, {
+          'config': {
+            'taskCreationStep': TaskCreationStep.ConfigureFunctionOutput,
+            'element': element
+          } as ITaskCreationConfig,
+          'value': data
+        }]);
       }
-      else if (!hasCustomImplementation && existingImplementation) {
-        let index = this.values.indexOf(existingImplementation);
-        if (index > -1) this.values.splice(index, 1);
+      else if (!hasCustomImplementation) {
+        if (existingImplementation) {
+          let index = this.values.indexOf(existingImplementation);
+          if (index > -1) this.values.splice(index, 1);
+        }
+        if (existingOutputConfig) {
+          let index = this.values.indexOf(existingOutputConfig);
+          if (index > -1) this.values.splice(index, 1);
+        }
       }
     });
   }

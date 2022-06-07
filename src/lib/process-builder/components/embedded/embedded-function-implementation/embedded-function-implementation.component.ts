@@ -16,7 +16,7 @@ import { CodemirrorRepository } from 'src/lib/core/codemirror-repository';
 import { MethodEvaluationStatus } from 'src/lib/process-builder/globals/method-evaluation-status';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
 import { IEmbeddedFunctionImplementationData } from './i-embedded-function-implementation-output';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
 import { linter, lintGutter } from '@codemirror/lint';
 // @ts-ignore
 import Linter from "eslint4b-prebuilt";
@@ -45,7 +45,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
     'parseInt()': { type: 'function' },
     'var': { type: 'variable' },
   };
-  paramInjector: any = { injector: {  } };
+  paramInjector: any = { injector: {} };
   staticParams = [
     {
       normalizedName: 'httpClient', value: {
@@ -85,6 +85,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
       'normalizedName': ProcessBuilderRepository.normalizeName(config.defaultFunctionName),
       'outputParamName': config.dynamicParamDefaultNaming,
       'normalizedOutputParamName': ProcessBuilderRepository.normalizeName(config.dynamicParamDefaultNaming),
+      'outputParamValue': this._formBuilder.control([])
     });
   }
 
@@ -108,7 +109,8 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
         }
       }),
       combineLatest([this.implementationChanged$, this.formGroup.valueChanges.pipe(startWith(this.formGroup.value))])
-        .pipe(debounceTime(500)).subscribe(([implementation, formValue]: [Text, any]) => {
+        .pipe(debounceTime(500))
+        .subscribe(([implementation, formValue]: [Text, any]) => {
           this.valueChange.emit({
             'canFail': formValue['canFail'],
             'implementation': implementation,
@@ -116,7 +118,8 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
             'normalizedName': formValue['normalizedName'],
             'outputParamName': formValue['outputParamName'],
             'normalizedOutputParamName': formValue['normalizedOutputParamName'],
-          });
+            'outputParamValue': []
+          } as IEmbeddedFunctionImplementationData);
         }),
       this.formGroup.controls['name'].valueChanges.pipe(debounceTime(200)).subscribe(name => this.formGroup.controls['normalizedName'].setValue(ProcessBuilderRepository.normalizeName(name))),
       this.formGroup.controls['outputParamName'].valueChanges.pipe(debounceTime(200)).subscribe(name => this.formGroup.controls['normalizedOutputParamName'].setValue(ProcessBuilderRepository.normalizeName(name))),
@@ -124,7 +127,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
         tap(() => this._returnValueStatus.next(MethodEvaluationStatus.Calculating)),
         debounceTime(500)
       ).subscribe(() => this._returnValueStatus.next(CodemirrorRepository.evaluateCustomMethod(this.codeMirror.state))),
-      this.returnValueStatus$.subscribe(status => status === MethodEvaluationStatus.ReturnValueFound? this.formGroup.controls['outputParamName'].enable(): this.formGroup.controls['outputParamName'].disable())
+      this.returnValueStatus$.subscribe(status => status === MethodEvaluationStatus.ReturnValueFound ? this.formGroup.controls['outputParamName'].enable() : this.formGroup.controls['outputParamName'].disable())
     ]);
   }
 
@@ -154,7 +157,9 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
     ProcessBuilderRepository.testMethodAndGetResponse(this.codeMirror.state.doc, {
       httpClient: this._httpClient
     }).subscribe({
-      next: (v) => console.log(v),
+      next: (v) => {
+        this.formGroup.controls['outputParamValue'].setValue(ProcessBuilderRepository.extractObjectIParams(v));
+      },
       error: (e) => console.log(e),
       complete: () => console.log('complete')
     });
@@ -195,6 +200,10 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
   });
 
   MethodEvaluationStatus = MethodEvaluationStatus;
+
+  get canFailControl(): FormControl {
+    return this.formGroup.controls['canFail'] as FormControl;
+  }
 
 }
 
