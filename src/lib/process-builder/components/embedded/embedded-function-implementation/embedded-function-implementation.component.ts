@@ -123,7 +123,8 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
       this._implementationChanged.pipe(
         tap(() => this._returnValueStatus.next(MethodEvaluationStatus.Calculating)),
         debounceTime(500)
-      ).subscribe(() => this._returnValueStatus.next(CodemirrorRepository.evaluateCustomMethod(this.codeMirror.state)))
+      ).subscribe(() => this._returnValueStatus.next(CodemirrorRepository.evaluateCustomMethod(this.codeMirror.state))),
+      this.returnValueStatus$.subscribe(status => status === MethodEvaluationStatus.ReturnValueFound? this.formGroup.controls['outputParamName'].enable(): this.formGroup.controls['outputParamName'].disable())
     ]);
   }
 
@@ -180,7 +181,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
   }
 
   state = () => EditorState.create({
-    doc: this.initialValue?.implementation ?? `/**\n * write your custom code in the main method\n * use javascript notation\n */\n\n\async (injector) => {\n  // your code\n}\n`,
+    doc: this.initialValue?.implementation ?? `/**\n * write your custom code in the method\n * use javascript notation\n * all params available via the injector instance\n */\n\n\async (injector) => {\n  // your code\n}\n`,
     extensions: [
       basicSetup,
       autocompletion({ override: [this.complete] }),

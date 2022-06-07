@@ -30,12 +30,16 @@
 
         <div class="spacer"></div>
 
+        <div class="control secondary" *ngIf="(currentStep$|async)?.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation">
+            Help
+        </div>
+
         <div class="control secondary" *ngIf="(currentStep$|async)?.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation" (click)="testImplementation()">
-            Testen
+            Test
         </div>
 
         <div class="control primary" [ngClass]="{ 'disabled': unfinished }" (click)="finish()">
-            Abschließen
+            Finish
         </div>
 
     </div>

@@ -25,7 +25,8 @@ export class CodemirrorRepository {
         let mainMethod = this.getMainMethod(tree, state, text);
         if (!mainMethod.node) return MethodEvaluationStatus.NoMainMethodFound;
 
-        let block = mainMethod.node.getChild('Block');
+        let arrowFunction = mainMethod.node.getChild('ArrowFunction');
+        let block = arrowFunction ? arrowFunction.getChild('Block'): mainMethod.node.getChild('Block');
         let returnStatement = block?.getChild('ReturnStatement') ?? undefined;
         return returnStatement ? MethodEvaluationStatus.ReturnValueFound : MethodEvaluationStatus.NoReturnValue;
 
@@ -47,19 +48,9 @@ export class CodemirrorRepository {
         if (!tree) tree = syntaxTree(state);
 
         let node = tree.resolveInner(0);
-        let functions = node.getChildren("FunctionDeclaration");
-        for (let func of functions) {
+        let functions = [...node.getChildren("ExpressionStatement")];
 
-            let variableDef = func.getChild("VariableDefinition");
-            if (!variableDef) continue;
-
-            let functionName = state.doc.slice(variableDef.from, variableDef.to);
-            if ((functionName as any).text[0] === 'main') {
-                return { 'node': func, 'tree': tree };
-            }
-        }
-
-        return { 'node': null, 'tree': tree };
+        return { 'node': functions.length > 0? functions[functions.length - 1]: null, 'tree': tree };
 
     }
 

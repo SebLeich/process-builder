@@ -5,6 +5,12 @@
     border-radius: 2px
     transition: all .3s
     animation: leaves .15s ease-out
+    width: 5rem
+    text-align: center
+    font-weight: 200 !important
+
+    &:hover
+        opacity: .8
 
 @mixin default-button()
     @include button
@@ -12,7 +18,7 @@
 
 @mixin secondary-button()
     @include button
-    background-color: #4082b9
+    background-color: #47968a
 
 @keyframes leaves
     0%

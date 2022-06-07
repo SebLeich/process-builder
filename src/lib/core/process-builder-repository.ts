@@ -71,7 +71,8 @@ export class ProcessBuilderRepository {
 
     }
 
-    static normalizeName(text: string) {
+    static normalizeName(text: string | null | undefined): string | null {
+        if(!text) return null;
         text = text.toLowerCase().replace(/[-_?:*%!;¿\s.]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
         return text.substr(0, 1).toLowerCase() + text.substr(1);
     }
@@ -81,6 +82,7 @@ export class ProcessBuilderRepository {
         let jsText = ((doc as any).text as string[]).join('\n');
 
         let main: (injector: any) => any | Promise<any> = eval(jsText);
+        debugger;
         if (this._returnsPromise(main)) (main(injector) as Promise<any>)
             .then((result: any) => subject.next(result))
             .catch((error: any) => subject.error(error))

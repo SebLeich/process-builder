@@ -130,11 +130,13 @@ export class TaskCreationComponent implements OnInit {
   }
 
   testImplementation(){
+
     let customImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation);
     if(!customImplementation) return;
-    ProcessBuilderRepository.testMethodAndGetResponse((customImplementation.value as IEmbeddedFunctionImplementationData).implementation, {
+    let result = ProcessBuilderRepository.testMethodAndGetResponse((customImplementation.value as IEmbeddedFunctionImplementationData).implementation, {
       'httpClient': this._httpClient
     });
+    result.subscribe({ 'next': v => console.log(v) });
   }
 
   validateFunctionSelection(preSelected: number, element: IElement) {
