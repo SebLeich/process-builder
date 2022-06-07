@@ -17,6 +17,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { FunctionPreviewComponent } from './components/function-preview/function-preview.component';
 import { ParamPipe } from './pipes/param.pipe';
@@ -56,7 +57,9 @@ import { loadIFunctions } from './store/actions/i-function.actions';
     MatDialogModule,
     MatIconModule,
     MatInputModule,
+    MatProgressSpinnerModule,
     MatTabsModule,
+    
     ReactiveFormsModule,
     RouterModule.forChild([
       { path: '**', component: ProcessBuilderComponent }
@@ -71,7 +74,7 @@ import { loadIFunctions } from './store/actions/i-function.actions';
   ],
   providers: [
     ParamPipe,
-    { provide: fromIParamState.I_PARAM_STORE_TOKEN, useExisting: Store },
+    { provide: fromIParamState.PARAM_STORE_TOKEN, useExisting: Store },
     { provide: fromIFunctionState.I_FUNCTION_STORE_TOKEN, useExisting: Store }
   ]
 })

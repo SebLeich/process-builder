@@ -1,12 +1,13 @@
-import { Component, EventEmitter, Inject, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { filter, map, ReplaySubject, Subscription } from 'rxjs';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, QueryList, ViewChildren, ViewContainerRef } from '@angular/core';
+import { delay, map, ReplaySubject, Subscription, takeUntil } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
-import { FUNCTIONS_CONFIG_TOKEN, IFunction } from 'src/lib/process-builder/globals/i-function';
+import { IFunction } from 'src/lib/process-builder/globals/i-function';
 import { showAnimation } from 'src/lib/shared/animations/show';
 import * as fromIFunctionState from 'src/lib/process-builder/store/reducers/i-function.reducer';
 import { Store } from '@ngrx/store';
 import { selectIFunctions } from 'src/lib/process-builder/store/selectors/i-function.selector';
+import { FunctionPreviewComponent } from '../../function-preview/function-preview.component';
 
 @Component({
   selector: 'app-embedded-function-selection',
@@ -20,6 +21,8 @@ export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>
   @Input() initialValue: number | undefined;
 
   @Output() valueChange: EventEmitter<number> = new EventEmitter<number>();
+
+  @ViewChildren(FunctionPreviewComponent, { read: ViewContainerRef }) private activeFunctionWrappers!: QueryList<ViewContainerRef>;
 
   private _availableFunctions = new ReplaySubject<IFunction[]>(1);
   availableFunctions$ = this._availableFunctions.asObservable();
@@ -49,7 +52,13 @@ export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>
           let availableInputParams: ParamCodes[] = Array.isArray(this.inputParams) ? this.inputParams : this.inputParams ? [this.inputParams] : [];
           return !requiredInputs.some(x => availableInputParams.indexOf(x) === -1);
         })
-      })).subscribe((availableFunctions) => this._availableFunctions.next(availableFunctions as IFunction[]))
+      })).subscribe((availableFunctions) => {
+        this._availableFunctions.next(availableFunctions as IFunction[]);
+      }),
+      this.availableFunctions$.pipe(delay(800), takeUntil(this.valueChange)).subscribe(() => {
+        let ref = this.activeFunctionWrappers.find(x => (x.element.nativeElement as HTMLDivElement).hasAttribute('active'));
+        if(ref) ref.element.nativeElement.scrollIntoView({ behavior: 'smooth' });
+      })
     ])
   }
 

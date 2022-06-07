@@ -1,14 +1,8 @@
+import { Text } from "@codemirror/state";
+import { Observable, ReplaySubject } from "rxjs";
 import { IParamKeyValue } from "../process-builder/globals/i-param-key-value";
 
 export class ProcessBuilderRepository {
-
-    private static _randomValueGenerator = {
-        'array': () => { return [] },
-        'object': () => { return {} },
-        'string': () => btoa(Math.random().toString()).slice(0, 5),
-        'number': () => Math.floor(Math.random() * 11),
-        'boolean': () => Math.floor(Math.random() * 11) % 2 === 1
-    };
 
     static convertIParamKeyValuesToPseudoObject(values: IParamKeyValue[], parent: any = {}, config: {
         string: () => string | undefined,
@@ -77,9 +71,42 @@ export class ProcessBuilderRepository {
 
     }
 
-    static normalizeName(text: string){
+    static normalizeName(text: string) {
         text = text.toLowerCase().replace(/[-_?:*%!;¿\s.]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
         return text.substr(0, 1).toLowerCase() + text.substr(1);
     }
+
+    static testMethodAndGetResponse(doc: Text, injector: any): Observable<any> {
+        let subject = new ReplaySubject<any>(1);
+        let jsText = ((doc as any).text as string[]).join('\n');
+
+        let main: (injector: any) => any | Promise<any> = eval(jsText);
+        if (this._returnsPromise(main)) (main(injector) as Promise<any>)
+            .then((result: any) => subject.next(result))
+            .catch((error: any) => subject.error(error))
+            .finally(() => subject.complete());
+        else {
+            try {
+                subject.next(main(injector));
+            } catch (e) {
+                subject.error(e);
+            } finally {
+                subject.complete();
+            }
+        }
+
+        return subject.asObservable();
+    }
+
+    private static _randomValueGenerator = {
+        'array': () => { return [] },
+        'object': () => { return {} },
+        'string': () => btoa(Math.random().toString()).slice(0, 5),
+        'number': () => Math.floor(Math.random() * 11),
+        'boolean': () => Math.floor(Math.random() * 11) % 2 === 1
+    };
+
+    private static _isPromise = (p: any) => typeof p === 'object' && typeof p.then === 'function';
+    private static _returnsPromise = (f: any) => f.constructor.name === 'AsyncFunction' || (typeof f === 'function' && this._isPromise(f()));
 
 }

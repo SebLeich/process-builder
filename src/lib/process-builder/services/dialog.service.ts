@@ -22,7 +22,11 @@ export class DialogService {
   configTaskCreation(steps: ITaskCreationConfig[], bpmnJS: any): Observable<ITaskCreationComponentOutput[]> {
     let ref = this._dialog.open(TaskCreationComponent, {
       panelClass: 'no-padding-dialog',
-      data: { 'steps': steps, 'bpmnJS': bpmnJS } as ITaskCreationComponentInput
+      data: {
+        'steps': steps, 
+        'bpmnJS': bpmnJS
+      } as ITaskCreationComponentInput,
+      disableClose: true
     });
     return ref.afterClosed();
   }

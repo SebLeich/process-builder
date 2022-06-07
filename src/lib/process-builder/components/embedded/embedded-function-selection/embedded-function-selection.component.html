@@ -4,7 +4,7 @@
         'active': func.identifier === selection
     }">
     
-        <app-function-preview [func]="func"></app-function-preview>
+        <app-function-preview [func]="func" [attr.active]="func.identifier === selection? true: undefined"></app-function-preview>
     
     </div>
 

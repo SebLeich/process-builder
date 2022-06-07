@@ -3,7 +3,7 @@ import { ParamCodes } from "./param-codes";
 
 export default [
     {
-        'processTypeIdentifier': ParamCodes.UserStringInput,
+        'identifier': ParamCodes.UserStringInput,
         'value': [
             { 'name': 'value', 'type': 'string', 'defaultValue': 'exemplary user string input' }
         ],
@@ -11,7 +11,7 @@ export default [
         'normalizedName': 'userStringInput'
     } as IParam,
     {
-        'processTypeIdentifier': ParamCodes.ToUpperCaseResult,
+        'identifier': ParamCodes.ToUpperCaseResult,
         'value': [
             { 'name': 'value', 'type': 'string', 'defaultValue': 'exemplary user string input - uppercase' }
         ],
@@ -19,7 +19,7 @@ export default [
         'normalizedName': 'uppercaseUserStringInput'
     } as IParam,
     {
-        'processTypeIdentifier': ParamCodes.UserDateInput,
+        'identifier': ParamCodes.UserDateInput,
         'value': [
             { 'name': 'value', 'type': 'string', 'defaultValue': 'exemplary user date input' }
         ],
@@ -27,7 +27,7 @@ export default [
         'normalizedName': 'userDateInput'
     } as IParam,
     {
-        'processTypeIdentifier': ParamCodes.UserNumberInput,
+        'identifier': ParamCodes.UserNumberInput,
         'value': [
             { 'name': 'value', 'type': 'number', 'defaultValue': 'exemplary user numeric input' }
         ],
@@ -35,7 +35,7 @@ export default [
         'normalizedName': 'userNumberInput'
     } as IParam,
     {
-        'processTypeIdentifier': ParamCodes.ExemplarySolution,
+        'identifier': ParamCodes.ExemplarySolution,
         'value': [
             { 'name': '_Id', 'type': 'string', 'defaultValue': 'ab34762f-ccd1-4258-b3e1-69558728e6b4' },
             {

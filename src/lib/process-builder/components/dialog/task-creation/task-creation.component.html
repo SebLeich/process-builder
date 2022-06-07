@@ -14,7 +14,7 @@
 
     <div class="dialog-body">
 
-        <mat-tab-group mat-align-tabs="start" (selectedIndexChange)="setStep($event)" [selectedIndex]="currentStepIndex">
+        <mat-tab-group mat-align-tabs="start" (selectedIndexChange)="setStep($event)" [selectedIndex]="currentStepIndex$|async">
 
             <mat-tab [label]=(tab.taskCreationStep|taskCreationStep) *ngFor="let tab of (steps$|async)"></mat-tab>
 
@@ -30,7 +30,11 @@
 
         <div class="spacer"></div>
 
-        <div class="control" [ngClass]="{ 'disabled': unfinished }" (click)="finish()">
+        <div class="control secondary" *ngIf="(currentStep$|async)?.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation" (click)="testImplementation()">
+            Testen
+        </div>
+
+        <div class="control primary" [ngClass]="{ 'disabled': unfinished }" (click)="finish()">
             Abschließen
         </div>
 

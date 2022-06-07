@@ -1,3 +1,5 @@
+@import 'src/lib/sass/button'
+
 .body
     width: 80vw
     max-width: 800px
@@ -25,12 +27,13 @@
     padding: 0px 0.5rem
 
 .footer .control
-    padding: 0.3rem 0.5rem
-    cursor: pointer
-    background-color: #404db9
-    color: white
-    border-radius: 3px
-    transition: all .3s
+    margin-left: .25rem
+
+.footer .control.primary
+    @include default-button
+
+.footer .control.secondary
+    @include secondary-button
 
 .footer .control.disabled
     pointer-events: none

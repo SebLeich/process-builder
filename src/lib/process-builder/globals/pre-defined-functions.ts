@@ -6,7 +6,7 @@ export class PredefinedFunctions {
         return {
             'identifier': identifier,
             'canFail': true,
-            'description': 'a self-written, custom js snippet',
+            'description': 'a self-written, custom javascript code snippet',
             'inputParams': null,
             'name': name,
             'useDynamicInputParams': true,

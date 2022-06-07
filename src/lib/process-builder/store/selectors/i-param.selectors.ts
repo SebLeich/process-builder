@@ -1,14 +1,20 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { ParamCodes } from 'src/config/param-codes';
+import { IParam } from '../../globals/i-param';
 import * as fromIParam from '../reducers/i-param.reducer';
 
 export const selectIParamState = createFeatureSelector<fromIParam.State>(
     fromIParam.featureKey
 );
 
-export const selectIParam = (code: ParamCodes | 'dynamic') => createSelector(
+export const selectIParam = (arg: ParamCodes | 'dynamic' | undefined | (() => ParamCodes | 'dynamic' | undefined)) => createSelector(
     selectIParamState,
-    (state: fromIParam.State) => code === 'dynamic' ? null : state && state.entities ? Object.values(state.entities).find(x => x?.processTypeIdentifier === code) : null
+    (state: fromIParam.State) => {
+        if(!state || !state.entities || !arg || arg === 'dynamic') return null;
+        let code = typeof arg === 'function'? arg(): arg;
+        if(!code || code === 'dynamic') return null;
+        return Object.values(state.entities).find(x => x?.identifier === code);
+    }
 );
 
 export const selectIParams = (codes?: ParamCodes[]) => createSelector(
@@ -16,7 +22,12 @@ export const selectIParams = (codes?: ParamCodes[]) => createSelector(
     (state: fromIParam.State) => {
         if (!state || !state.entities) return [];
         let params = Object.values(state.entities);
-        if (Array.isArray(codes)) params = params.filter(x => codes.findIndex(y => x?.processTypeIdentifier === y) > -1);
+        if (Array.isArray(codes)) params = params.filter(x => codes.findIndex(y => x?.identifier === y) > -1);
         return params;
     }
+);
+
+export const selectNextId = () => createSelector(
+    selectIParamState,
+    (state: fromIParam.State) => (state && state.entities ? Math.max(...Object.values(state.entities).filter(x => x? true: false).map(x => (x as IParam).identifier), -1): -1) + 1
 );

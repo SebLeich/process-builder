@@ -2,7 +2,7 @@ import { InjectionToken } from "@angular/core";
 import { IParamKeyValue } from "./i-param-key-value";
 
 export interface IParam {
-    'processTypeIdentifier': number;
+    'identifier': number;
     'value': IParamKeyValue[];
     'name': string;
     'normalizedName': string;

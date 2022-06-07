@@ -34,7 +34,18 @@
             <mat-tab label="import from flow">
 
                 <div class="hint">
-                    dynamically calculate data structures as a result of provided pseudo inputs
+                    Dynamically calculate the parameter's data structure as a result of your modeled flow.
+                    The parameter <b>{{(paramObject$|async)?.name ?? 'unknown'}}</b> is produced by
+                    <b>{{(producingFunctions$|async)?.length ?? 0}}</b> function(s).
+                </div>
+
+                <div class="function-wrapper" *ngFor="let func of producingFunctions$|async">
+
+                    <app-function-preview [func]="func"></app-function-preview>
+                    <div class="calculate-control" (click)="calculateFunctionOutput(func)">
+                        calculate
+                    </div>
+
                 </div>
 
             </mat-tab>

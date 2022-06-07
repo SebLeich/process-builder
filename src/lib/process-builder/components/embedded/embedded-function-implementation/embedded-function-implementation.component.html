@@ -9,7 +9,10 @@
         
     </div>
 
-    <div #codeBody class="code-body"></div>
+    <div #codeBody class="code-body" 
+        (keypress)="blockTabPressEvent($event)" 
+        (keydown)="blockTabPressEvent($event)" 
+        (keyup)="blockTabPressEvent($event)"></div>
 
     <div class="footer">
         {{returnValueStatus$|async|returnValueStatus}}

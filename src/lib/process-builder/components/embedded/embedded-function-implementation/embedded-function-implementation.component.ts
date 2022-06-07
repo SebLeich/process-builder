@@ -1,21 +1,26 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Inject, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, debounceTime, filter, ReplaySubject, startWith, Subject, Subscription, take, tap } from 'rxjs';
+import { BehaviorSubject, combineLatest, debounceTime, filter, interval, ReplaySubject, startWith, Subject, Subscription, take, tap, timer } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
 import { ProcessBuilderRepository } from 'src/lib/core/process-builder-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
-import { State } from 'src/lib/process-builder/store/reducers/i-param.reducer';
+import * as fromIParam from 'src/lib/process-builder/store/reducers/i-param.reducer';
+import * as fromIFunction from 'src/lib/process-builder/store/reducers/i-function.reducer';
 import { selectIParams } from 'src/lib/process-builder/store/selectors/i-param.selectors';
 import { syntaxTree } from "@codemirror/language";
 import { autocompletion, CompletionContext } from "@codemirror/autocomplete";
 import { EditorState, Text } from '@codemirror/state';
 import { basicSetup, EditorView } from '@codemirror/basic-setup';
-import { javascript } from '@codemirror/lang-javascript';
+import { esLint, javascript } from '@codemirror/lang-javascript';
 import { CodemirrorRepository } from 'src/lib/core/codemirror-repository';
 import { MethodEvaluationStatus } from 'src/lib/process-builder/globals/method-evaluation-status';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
 import { IEmbeddedFunctionImplementationData } from './i-embedded-function-implementation-output';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { linter, lintGutter } from '@codemirror/lint';
+// @ts-ignore
+import Linter from "eslint4b-prebuilt";
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-embedded-function-implementation',
@@ -34,12 +39,24 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
 
   globalsInjector: any = {
     'const': { type: 'variable' },
-    'main()': { type: 'function', apply: 'function main(){\n  // your code here\n}' },
+    'injector': { type: 'variable', apply: 'injector' },
+    'main': { type: 'function', apply: 'async () => {\n  // your code\n}\n', hint: 'async' },
     'let': { type: 'variable' },
     'parseInt()': { type: 'function' },
     'var': { type: 'variable' },
   };
-  paramInjector: any = {};
+  paramInjector: any = { injector: {  } };
+  staticParams = [
+    {
+      normalizedName: 'httpClient', value: {
+        'get()': { type: 'function', apply: 'get(/*url*/).toPromise()', info: 'asynchronously' },
+        'post()': { type: 'function', apply: 'post(/*url*/, /*data*/).toPromise()', info: 'asynchronously' },
+        'put()': { type: 'function', apply: 'put(/*url*/, /*data*/).toPromise()', info: 'asynchronously' },
+        'delete()': { type: 'function', apply: 'delete(/*url*/).toPromise()', info: 'asynchronously' }
+      }
+    }
+  ]
+
   varNameInjector: any = {
     'var1': { type: 'variable' },
     'var2': { type: 'variable' }
@@ -57,8 +74,10 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
 
   constructor(
     @Inject(PROCESS_BUILDER_CONFIG_TOKEN) public config: IProcessBuilderConfig,
-    private _store: Store<State>,
-    private _formBuilder: FormBuilder
+    private _paramStore: Store<fromIParam.State>,
+    private _functionStore: Store<fromIFunction.State>,
+    private _formBuilder: FormBuilder,
+    private _httpClient: HttpClient
   ) {
     this.formGroup = this._formBuilder.group({
       'canFail': false,
@@ -69,8 +88,15 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
     });
   }
 
+  blockTabPressEvent(event: KeyboardEvent) {
+    if (event.key === 'Tab') {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+  }
+
   ngAfterViewInit(): void {
-    if(this.initialValue) this.formGroup.patchValue(this.initialValue);
+    if (this.initialValue) this.formGroup.patchValue(this.initialValue);
     this._subscriptions.push(...[
       this.prepareInjector().subscribe({
         complete: () => {
@@ -110,16 +136,27 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
     let subject = new Subject<void>();
     let inputParams = Array.isArray(this.inputParams) ? this.inputParams : this.inputParams ? [this.inputParams] : [];
     this._subscriptions.push(...[
-      this._store.select(selectIParams(inputParams))
+      this._paramStore.select(selectIParams(inputParams))
         .pipe(take(1), filter(x => x ? true : false))
         .subscribe(allParams => {
-          for (let key of Object.keys(this.paramInjector)) delete this.paramInjector[key];
-          for (let param of allParams) this.paramInjector[param!.name] = ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(param!.value);
+          for (let key of Object.keys(this.paramInjector.injector)) delete this.paramInjector.injector[key];
+          for (let param of allParams) this.paramInjector.injector[param!.normalizedName] = ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(param!.value);
+          for (let param of this.staticParams) this.paramInjector.injector[param.normalizedName] = param.value;
           subject.next();
           subject.complete();
         })
     ]);
     return subject.asObservable();
+  }
+
+  test() {
+    ProcessBuilderRepository.testMethodAndGetResponse(this.codeMirror.state.doc, {
+      httpClient: this._httpClient
+    }).subscribe({
+      next: (v) => console.log(v),
+      error: (e) => console.log(e),
+      complete: () => console.log('complete')
+    });
   }
 
   complete = (context: CompletionContext) => {
@@ -143,14 +180,16 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
   }
 
   state = () => EditorState.create({
-    doc: this.initialValue?.implementation ?? "/**\n * write your custom code in the main method\n * use javascript notation\n */\n\nfunction main() {\n  // your code\n}\n",
+    doc: this.initialValue?.implementation ?? `/**\n * write your custom code in the main method\n * use javascript notation\n */\n\n\async (injector) => {\n  // your code\n}\n`,
     extensions: [
       basicSetup,
       autocompletion({ override: [this.complete] }),
       javascript(),
       EditorView.updateListener.of((evt) => {
         if (evt.docChanged) this._implementationChanged.next(this.codeMirror.state.doc);
-      })
+      }),
+      linter(esLint(new Linter())),
+      lintGutter()
     ]
   });
 
