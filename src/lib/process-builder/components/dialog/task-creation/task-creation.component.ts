@@ -24,6 +24,8 @@ import { HttpClient } from '@angular/common/http';
 import { EmbeddedParamEditorComponent } from '../../embedded/embedded-param-editor/embedded-param-editor.component';
 import { CodemirrorRepository } from 'src/lib/core/codemirror-repository';
 import { MethodEvaluationStatus } from 'src/lib/process-builder/globals/method-evaluation-status';
+import { FormBuilder, FormGroup } from '@angular/forms';
+import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
 
 @Component({
   selector: 'app-task-creation',
@@ -70,21 +72,35 @@ export class TaskCreationComponent implements OnInit {
       })
     ) as Observable<ITaskCreationConfig[]>;
 
+  currentStep$ = combineLatest([this.steps$, this.currentStepIndex$]).pipe(map(([steps, index]) => steps[index]));
+
+  canAnalyzeCustomImplementation$ = this.currentStep$.pipe(map(x => x.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation || x.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput));
+
   private _statusMessage: Subject<string> = new Subject<string>();
   statusMessage$ = combineLatest([this._statusMessage.asObservable(), this._statusMessage.pipe(switchMap(() => interval(1000)))])
     .pipe(map(([val, time]: [string, number]) => {
       return time < 5 ? val : null;
     }));
 
-  currentStep$ = combineLatest([this.steps$, this.currentStepIndex$]).pipe(map(([steps, index]) => steps[index]));
+  formGroup!: FormGroup;
 
   constructor(
     private _ref: MatDialogRef<TaskCreationComponent>,
+    @Inject(PROCESS_BUILDER_CONFIG_TOKEN) public config: IProcessBuilderConfig,
     @Inject(MAT_DIALOG_DATA) public data: ITaskCreationComponentInput,
     private _funcStore: Store<fromIFunction.State>,
     private _paramStore: Store<fromIParam.State>,
-    private _httpClient: HttpClient
+    private _httpClient: HttpClient,
+    private _formBuilder: FormBuilder
   ) {
+    this.formGroup = this._formBuilder.group({
+      'canFail': false,
+      'name': config.defaultFunctionName,
+      'normalizedName': ProcessBuilderRepository.normalizeName(config.defaultFunctionName),
+      'outputParamName': config.dynamicParamDefaultNaming,
+      'normalizedOutputParamName': ProcessBuilderRepository.normalizeName(config.dynamicParamDefaultNaming),
+      'outputParamValue': this._formBuilder.control(null)
+    })
     this._steps.next(data.steps);
   }
 
@@ -94,6 +110,7 @@ export class TaskCreationComponent implements OnInit {
   finish = () => this._ref.close(this.values);
 
   ngOnInit(): void {
+    interval(1000).subscribe(() => console.log(this.formGroup.value));
     this.stepRegistry[TaskCreationStep.ConfigureErrorGatewayEntranceConnection] = {
       type: EmbeddedConfigureErrorGatewayEntranceConnectionComponent
     };
@@ -107,15 +124,16 @@ export class TaskCreationComponent implements OnInit {
     this.stepRegistry[TaskCreationStep.ConfigureFunctionImplementation] = {
       type: EmbeddedFunctionImplementationComponent,
       provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
-        let component = arg as EmbeddedFunctionSelectionComponent;
+        let component = arg as EmbeddedFunctionImplementationComponent;
         component.inputParams = BPMNJsRepository.getAvailableInputParams(element);
+        component.formGroup = this.formGroup;
       }
     };
     this.stepRegistry[TaskCreationStep.ConfigureFunctionOutput] = {
       type: EmbeddedParamEditorComponent,
       provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
-        let component = arg as EmbeddedFunctionSelectionComponent;
-        component.inputParams = BPMNJsRepository.getAvailableInputParams(element);
+        let component = arg as EmbeddedParamEditorComponent;
+        component.formGroup = this.formGroup;
       }
     };
     for (let step of this.data.steps) {
@@ -169,10 +187,10 @@ export class TaskCreationComponent implements OnInit {
     });
     result.subscribe({
       'next': (result: any) => {
-        let parsed: string = typeof result === 'object'? JSON.stringify(result): typeof result === 'number'? result.toString(): result;
+        console.log(result);
+        let parsed: string = typeof result === 'object' ? JSON.stringify(result) : typeof result === 'number' ? result.toString() : result;
         this._statusMessage.next(`succeeded! received: ${parsed}`);
-        let outputParamStruct = ProcessBuilderRepository.extractObjectIParams(result);
-        console.log(outputParamStruct);
+        this.formGroup.controls['outputParamValue'].setValue(result);
       }
     });
   }
@@ -186,26 +204,18 @@ export class TaskCreationComponent implements OnInit {
       let hasCustomImplementation = fun && (fun.requireCustomImplementation === true || fun.customImplementation), existingImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation), existingOutputConfig = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput);
       this._hasCustomImplementation.next(hasCustomImplementation ? element : null);
       if (hasCustomImplementation && !existingImplementation) {
-        let data = {
-          'implementation': fun?.customImplementation,
-          'canFail': fun?.canFail,
-          'name': fun?.name,
-          'normalizedName': fun?.normalizedName,
-          'outputParamName': outputParam?.name,
-          'normalizedOutputParamName': outputParam?.normalizedName
-        } as IEmbeddedFunctionImplementationData;
         this.values.push(...[{
           'config': {
             'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
             'element': element
           } as ITaskCreationConfig,
-          'value': data
+          'value': null
         }, {
           'config': {
             'taskCreationStep': TaskCreationStep.ConfigureFunctionOutput,
             'element': element
           } as ITaskCreationConfig,
-          'value': data
+          'value': null
         }]);
       }
       else if (!hasCustomImplementation) {

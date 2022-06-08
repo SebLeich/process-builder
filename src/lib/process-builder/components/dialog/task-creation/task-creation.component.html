@@ -40,7 +40,7 @@
             Help
         </div>
 
-        <div class="control secondary" *ngIf="(currentStep$|async)?.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation" (click)="testImplementation()">
+        <div class="control secondary" *ngIf="canAnalyzeCustomImplementation$|async" (click)="testImplementation()">
             Execute
         </div>
 

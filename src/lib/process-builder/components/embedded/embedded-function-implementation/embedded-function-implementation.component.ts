@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Inject, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, debounceTime, filter, interval, ReplaySubject, startWith, Subject, Subscription, take, tap, timer } from 'rxjs';
+import { BehaviorSubject, combineLatest, debounceTime, filter, ReplaySubject, startWith, Subject, Subscription, take, tap } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
 import { ProcessBuilderRepository } from 'src/lib/core/process-builder-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
@@ -16,7 +16,7 @@ import { CodemirrorRepository } from 'src/lib/core/codemirror-repository';
 import { MethodEvaluationStatus } from 'src/lib/process-builder/globals/method-evaluation-status';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
 import { IEmbeddedFunctionImplementationData } from './i-embedded-function-implementation-output';
-import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
+import { FormControl, FormGroup } from '@angular/forms';
 import { linter, lintGutter } from '@codemirror/lint';
 // @ts-ignore
 import Linter from "eslint4b-prebuilt";
@@ -76,18 +76,8 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
     @Inject(PROCESS_BUILDER_CONFIG_TOKEN) public config: IProcessBuilderConfig,
     private _paramStore: Store<fromIParam.State>,
     private _functionStore: Store<fromIFunction.State>,
-    private _formBuilder: FormBuilder,
     private _httpClient: HttpClient
-  ) {
-    this.formGroup = this._formBuilder.group({
-      'canFail': false,
-      'name': config.defaultFunctionName,
-      'normalizedName': ProcessBuilderRepository.normalizeName(config.defaultFunctionName),
-      'outputParamName': config.dynamicParamDefaultNaming,
-      'normalizedOutputParamName': ProcessBuilderRepository.normalizeName(config.dynamicParamDefaultNaming),
-      'outputParamValue': this._formBuilder.control([])
-    });
-  }
+  ) { }
 
   blockTabPressEvent(event: KeyboardEvent) {
     if (event.key === 'Tab') {
@@ -117,8 +107,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
             'name': formValue['name'],
             'normalizedName': formValue['normalizedName'],
             'outputParamName': formValue['outputParamName'],
-            'normalizedOutputParamName': formValue['normalizedOutputParamName'],
-            'outputParamValue': []
+            'normalizedOutputParamName': formValue['normalizedOutputParamName']
           } as IEmbeddedFunctionImplementationData);
         }),
       this.formGroup.controls['name'].valueChanges.pipe(debounceTime(200)).subscribe(name => this.formGroup.controls['normalizedName'].setValue(ProcessBuilderRepository.normalizeName(name))),
@@ -151,18 +140,6 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
         })
     ]);
     return subject.asObservable();
-  }
-
-  test() {
-    ProcessBuilderRepository.testMethodAndGetResponse(this.codeMirror.state.doc, {
-      httpClient: this._httpClient
-    }).subscribe({
-      next: (v) => {
-        this.formGroup.controls['outputParamValue'].setValue(ProcessBuilderRepository.extractObjectIParams(v));
-      },
-      error: (e) => console.log(e),
-      complete: () => console.log('complete')
-    });
   }
 
   complete = (context: CompletionContext) => {

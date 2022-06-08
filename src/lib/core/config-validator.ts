@@ -272,6 +272,10 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                 applyFunctionImplementationConfig(taskCreationComponentOutput);
                 break;
 
+            case TaskCreationStep.ConfigureFunctionOutput:
+                debugger;
+                break;
+
         }
 
     }

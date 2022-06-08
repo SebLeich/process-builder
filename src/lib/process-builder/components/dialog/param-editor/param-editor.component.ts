@@ -57,7 +57,6 @@ export class ParamEditorComponent implements AfterViewInit, OnDestroy, OnInit {
   }
 
   calculateFunctionOutput(func: IFunction) {
-    debugger;
     if (func.customImplementation) {
       let jsText = (func.customImplementation.text as string[]).join('\n');
       var bed = { test: 1000 };
