@@ -1,7 +1,5 @@
 import { Injector } from "@angular/core";
-import { Store } from "@ngrx/store";
 import { buffer, combineLatest, debounceTime, filter, ReplaySubject, Subject, switchMap, take, timer } from "rxjs";
-import { ParamCodes } from "src/config/param-codes";
 import bpmnJsEventTypes from "../bpmn-io/bpmn-js-event-types";
 import bpmnJsModules from "../bpmn-io/bpmn-js-modules";
 import { getElementRegistryModule, getModelingModule } from "../bpmn-io/bpmn-modules";
@@ -25,7 +23,7 @@ import { DialogService } from "../process-builder/services/dialog.service";
 import { addIFunction, updateIFunction } from "../process-builder/store/actions/i-function.actions";
 import { addIParam, removeIParam, updateIParam } from "../process-builder/store/actions/i-param.actions";
 import { I_FUNCTION_STORE_TOKEN } from "../process-builder/store/reducers/i-function.reducer";
-import { PARAM_STORE_TOKEN, State } from "../process-builder/store/reducers/i-param.reducer";
+import { PARAM_STORE_TOKEN } from "../process-builder/store/reducers/i-param.reducer";
 import * as fromIFunctionSelector from "../process-builder/store/selectors/i-function.selector";
 import * as fromIParmSelector from "../process-builder/store/selectors/i-param.selectors";
 import { BPMNJsRepository } from "./bpmn-js-repository";
@@ -112,46 +110,47 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         _connectionCreatePostExecutedActions[evt.context.connection.type](evt);
     });
 
-    const applyFunctionSelectionConfig = (evt: IDirectEditingEvent, functionIdentifier: number | null | undefined) => {
+    const applyFunctionSelectionConfig = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {
+        let functionIdentifier = taskCreationComponentOutput.value, element = taskCreationComponentOutput.config.element;
         let f: IFunction = injector.get(FUNCTIONS_CONFIG_TOKEN).find(x => x.identifier === functionIdentifier)!;
         if (!f) {
-            if (typeof evt.active.element.data !== 'number') {
-                getModelingModule(bpmnJS).removeElements([evt.active.element]);
+            if (typeof element.data !== 'number') {
+                getModelingModule(bpmnJS).removeElements([element]);
             }
             return;
         }
         if (f.requireCustomImplementation) return;
 
-        getModelingModule(bpmnJS).updateLabel(evt.active.element, f.name);
-        evt.active.element.data = f.identifier;
+        getModelingModule(bpmnJS).updateLabel(element, f.name);
+        element.data = f.identifier;
 
         if (f.output && !(f.output.param === 'dynamic')) {
             let outputParamCode = f.output.param;
-            let fileShape = getModelingModule(bpmnJS).appendShape(evt.active.element, {
+            let fileShape = getModelingModule(bpmnJS).appendShape(element, {
                 type: shapeTypes.DataObjectReference,
                 data: {
                     'outputParam': outputParamCode
                 }
-            }, { x: evt.active.element.x + 50, y: evt.active.element.y - 60 });
+            }, { x: element.x + 50, y: element.y - 60 });
             injector.get(ParamPipe).transform(outputParamCode).subscribe(paramName => getModelingModule(bpmnJS).updateLabel(fileShape, paramName));
         }
         if (f.canFail) {
             let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
-            let gatewayShape = getModelingModule(bpmnJS).appendShape(evt.active.element, {
+            let gatewayShape = getModelingModule(bpmnJS).appendShape(element, {
                 type: shapeTypes.ExclusiveGateway,
                 data: {
                     'gatewayType': 'error_gateway'
                 }
-            }, { x: evt.active.element.x + 200, y: evt.active.element.y + 40 });
+            }, { x: element.x + 200, y: element.y + 40 });
             getModelingModule(bpmnJS).updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
         }
         if (f.inputParams) {
             let inputParams = Array.isArray(f.inputParams) ? f.inputParams : [f.inputParams];
-            let availableInputParamsIElements = BPMNJsRepository.getAvailableInputParamsIElements(evt.active.element);
+            let availableInputParamsIElements = BPMNJsRepository.getAvailableInputParamsIElements(element);
             for (let param of inputParams) {
                 let element = availableInputParamsIElements.find(x => x.data['outputParam'] === param.param);
                 if (!element) continue;
-                getModelingModule(bpmnJS).connect(element, evt.active.element);
+                getModelingModule(bpmnJS).connect(element, element);
             }
         }
     }
@@ -163,6 +162,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
     }
 
     const applyFunctionImplementationConfig = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {
+
         if (!taskCreationComponentOutput.config.element) return;
 
         let value = taskCreationComponentOutput.value as IEmbeddedFunctionImplementationData;
@@ -188,7 +188,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                         'name': value.outputParamName,
                         'normalizedName': value.normalizedOutputParamName,
                         'identifier': outputParamId,
-                        'value': []
+                        'value': value.outputParamValue
                     } as IParam;
 
                     if (typeof existingFun.output?.param === 'number') {
@@ -221,9 +221,8 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                     'name': value.outputParamName,
                     'normalizedName': value.normalizedOutputParamName,
                     'identifier': outputParamId,
-                    'value': []
+                    'value': value.outputParamValue
                 } as IParam;
-
                 paramStore.dispatch(addIParam(param));
 
                 let fileShape = getModelingModule(bpmnJS).appendShape(taskCreationComponentOutput.config.element, {
@@ -265,7 +264,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                 break;
 
             case TaskCreationStep.ConfigureFunctionSelection:
-                applyFunctionSelectionConfig(taskCreationComponentOutput.config.payload, taskCreationComponentOutput.value);
+                applyFunctionSelectionConfig(taskCreationComponentOutput);
                 break;
 
             case TaskCreationStep.ConfigureFunctionImplementation:
@@ -273,7 +272,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                 break;
 
             case TaskCreationStep.ConfigureFunctionOutput:
-                debugger;
+                applyFunctionImplementationConfig(taskCreationComponentOutput);
                 break;
 
         }

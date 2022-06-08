@@ -95,11 +95,12 @@ export class TaskCreationComponent implements OnInit {
   ) {
     this.formGroup = this._formBuilder.group({
       'canFail': false,
+      'implementation': null,
       'name': config.defaultFunctionName,
       'normalizedName': ProcessBuilderRepository.normalizeName(config.defaultFunctionName),
       'outputParamName': config.dynamicParamDefaultNaming,
       'normalizedOutputParamName': ProcessBuilderRepository.normalizeName(config.dynamicParamDefaultNaming),
-      'outputParamValue': this._formBuilder.control(null)
+      'outputParamValue': this._formBuilder.control(null),
     })
     this._steps.next(data.steps);
   }
@@ -107,10 +108,14 @@ export class TaskCreationComponent implements OnInit {
   abort = () => this._ref.close(this.values.map(x => {
     return { 'config': x.config, 'value': undefined } as ITaskCreationComponentOutput
   }));
-  finish = () => this._ref.close(this.values);
+  finish() {
+    for (let value of this.values.filter(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation || x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput)) {
+      value.value = this.formGroup.value;
+    }
+    this._ref.close(this.values);
+  }
 
   ngOnInit(): void {
-    interval(1000).subscribe(() => console.log(this.formGroup.value));
     this.stepRegistry[TaskCreationStep.ConfigureErrorGatewayEntranceConnection] = {
       type: EmbeddedConfigureErrorGatewayEntranceConnectionComponent
     };
@@ -187,10 +192,9 @@ export class TaskCreationComponent implements OnInit {
     });
     result.subscribe({
       'next': (result: any) => {
-        console.log(result);
         let parsed: string = typeof result === 'object' ? JSON.stringify(result) : typeof result === 'number' ? result.toString() : result;
         this._statusMessage.next(`succeeded! received: ${parsed}`);
-        this.formGroup.controls['outputParamValue'].setValue(result);
+        this.formGroup.controls['outputParamValue'].setValue(ProcessBuilderRepository.extractObjectIParams(result));
       }
     });
   }
@@ -201,6 +205,15 @@ export class TaskCreationComponent implements OnInit {
       filter(x => x ? true : false),
       switchMap((fun: IFunction | null | undefined) => combineLatest([of(fun), this._paramStore.select(selectIParam(fun?.output?.param))]))
     ).subscribe(([fun, outputParam]: [IFunction | null | undefined, IParam | null | undefined]) => {
+      this.formGroup.patchValue({
+        'canFail': fun?.canFail,
+        'implementation': fun?.customImplementation,
+        'name': fun?.name,
+        'normalizedName': fun?.normalizedName,
+        'normalizedOutputParamName': outputParam?.normalizedName,
+        'outputParamName': outputParam?.name,
+        'outputParamValue': outputParam?.value
+      } as IEmbeddedFunctionImplementationData);
       let hasCustomImplementation = fun && (fun.requireCustomImplementation === true || fun.customImplementation), existingImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation), existingOutputConfig = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput);
       this._hasCustomImplementation.next(hasCustomImplementation ? element : null);
       if (hasCustomImplementation && !existingImplementation) {

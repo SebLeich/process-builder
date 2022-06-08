@@ -7,9 +7,14 @@ export const selectIFunctionState = createFeatureSelector<fromIFunction.State>(
     fromIFunction.featureKey
 );
 
-export const selectIFunction = (id: number) => createSelector(
+export const selectIFunction = (arg: number | undefined | (() => number | undefined)) => createSelector(
     selectIFunctionState,
-    (state: fromIFunction.State) => state && state.entities ? Object.values(state.entities).find(x => x?.identifier === id) : null
+    (state: fromIFunction.State) => {
+        if(!state || !state.entities || typeof arg === 'undefined') return null;
+        let code = typeof arg === 'function'? arg(): arg;
+        if(typeof arg === 'undefined') return null;
+        return Object.values(state.entities).find(x => x?.identifier === code);
+    }
 );
 
 export const selectIFunctions = (ids?: number[]) => createSelector(

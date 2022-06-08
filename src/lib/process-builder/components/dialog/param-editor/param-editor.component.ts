@@ -99,13 +99,6 @@ export class ParamEditorComponent implements AfterViewInit, OnDestroy, OnInit {
   }
 
   ngOnInit(): void {
-    /*
-    if (this.data === 'dynamic') {
-      this.nameControl.setValue('unnamed dynamic param');
-      this.processTypeIdentifierControl.setValue(Math.max(...(Object.values(ParamCodes).filter(x => typeof x === 'number') as number[]), -1) + 1);
-      return;
-    }
-    */
     this._paramStore.select(selectIParam(this.data)).subscribe(param => {
       if (!param) return;
       this.formGroup.patchValue(param);

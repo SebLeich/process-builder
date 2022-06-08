@@ -4,34 +4,50 @@ import { IParamKeyValue } from "../process-builder/globals/i-param-key-value";
 
 export class ProcessBuilderRepository {
 
-    static convertIParamKeyValuesToPseudoObject(values: IParamKeyValue[], parent: any = {}, config: {
+    static convertIParamKeyValuesToPseudoObject(values: IParamKeyValue[] | undefined, parent: any = {}, config: {
         string: () => string | undefined,
         boolean: () => boolean | undefined,
         number: () => number | undefined,
         object: () => object,
-        array: () => any[]
+        array: () => any[],
+        bigint: () => bigint | undefined,
+        function: () => Function | undefined,
+        symbol: () => symbol | undefined,
+        undefined: () => undefined
     } = {
             string: () => undefined,
             boolean: () => undefined,
             number: () => undefined,
             object: () => { return {} },
-            array: () => []
+            array: () => [],
+            function: () => undefined,
+            symbol: () => undefined,
+            bigint: () => undefined,
+            undefined: () => undefined
         }): object {
+
+        if (!Array.isArray(values)) return {};
 
         let index = 0;
 
         for (let value of values) {
 
-            let defaultValue = value.defaultValue;
-            if (!defaultValue) defaultValue = config[value.type]();
-            if (!defaultValue) defaultValue = this._randomValueGenerator[value.type]();
+            try {
 
-            Array.isArray(parent) ? parent.push(defaultValue) : parent[value.name] = defaultValue;
-            if (Array.isArray(value.typeDef)) {
-                this.convertIParamKeyValuesToPseudoObject(value.typeDef, Array.isArray(parent) ? parent[index] : parent[value.name], config);
+                let defaultValue = value.type === 'array'? []: value.defaultValue;
+                if (!defaultValue) defaultValue = config[value.type]();
+                if (!defaultValue) defaultValue = this._randomValueGenerator[value.type]();
+
+                Array.isArray(parent) ? parent.push(defaultValue) : parent[value.name] = defaultValue;
+                if (Array.isArray(value.typeDef)) {
+                    this.convertIParamKeyValuesToPseudoObject(value.typeDef, Array.isArray(parent) ? parent[index] : parent[value.name], config);
+                }
+
+                index++;
+
+            } catch (e) {
+                //debugger;
             }
-
-            index++;
 
         }
 
@@ -39,40 +55,52 @@ export class ProcessBuilderRepository {
 
     }
 
-    static extractObjectIParams(object: object): IParamKeyValue[] {
+    static extractObjectIParams(object: any): IParamKeyValue[] {
 
         let output: IParamKeyValue[] = [];
+        if (!object) return output;
 
-        for (let entry of Object.entries(object)) {
+        if (typeof object === 'object') {
 
-            // @ts-ignore
-            let type: 'array' | 'object' | 'string' | 'number' | 'boolean' = typeof entry[1];
-            let name: string | null = entry[0];
-            let typeDef: null | undefined | IParamKeyValue[];
-            let value: any = undefined;
-            if (type === 'object') {
-                if (Array.isArray(entry[1])) {
-                    type = 'array';
+            try {
+
+                for (let entry of Object.entries(object)) {
+
+                    // @ts-ignore
+                    let def = this._getDefinitionForMember(entry);
+                    if (def.type === 'object') {
+                        if (entry[1]) def.typeDef = this.extractObjectIParams(entry[1]);
+                    } else if (def.type === 'array') {
+                        let pseudoObject: any = {};
+                        def.defaultValue = def.defaultValue.slice(0, 10);
+                        (entry[1] as object[]).forEach(obj => {
+
+                            for (let subEntry of Object.entries(obj)) {
+                                if (pseudoObject[subEntry[0]]) continue;
+
+                                pseudoObject[subEntry[0]] = subEntry[1];
+                            }
+
+                        });
+                        def.typeDef = this.extractObjectIParams([pseudoObject]);
+                        output.push(def);
+                        break;
+                    }
+                    output.push(def);
                 }
-                typeDef = this.extractObjectIParams(entry[1]);
+
+            } catch (e) {
+                debugger;
             }
-            else value = entry[1];
 
-            output.push({
-                name: name,
-                type: type,
-                defaultValue: value,
-                typeDef: typeDef
-            } as IParamKeyValue);
-
-        }
+        } else output.push(this._getDefinitionForMember(['0', object]));
 
         return output;
 
     }
 
     static normalizeName(text: string | null | undefined): string | null {
-        if(!text) return null;
+        if (!text) return null;
         text = text.toLowerCase().replace(/[-_?:*%!;¿\s.]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
         return text.substr(0, 1).toLowerCase() + text.substr(1);
     }
@@ -99,12 +127,26 @@ export class ProcessBuilderRepository {
         return subject.asObservable();
     }
 
+    private static _getDefinitionForMember(entry: [key: string, value: any]): IParamKeyValue {
+        let type = typeof entry[1];
+        return {
+            'defaultValue': entry[1],
+            'name': entry[0],
+            'type': type === 'object' ? Array.isArray(entry[1]) ? 'array' : type : type,
+            'typeDef': undefined
+        };
+    }
+
     private static _randomValueGenerator = {
         'array': () => { return [] },
         'object': () => { return {} },
         'string': () => btoa(Math.random().toString()).slice(0, 5),
         'number': () => Math.floor(Math.random() * 11),
-        'boolean': () => Math.floor(Math.random() * 11) % 2 === 1
+        'boolean': () => Math.floor(Math.random() * 11) % 2 === 1,
+        'bigint': () => BigInt(Math.floor(Math.random() * 11)),
+        'symbol': () => Symbol('foo'),
+        'undefined': () => undefined,
+        'function': () => () => { }
     };
 
     private static _isPromise = (p: any) => typeof p === 'object' && typeof p.then === 'function';

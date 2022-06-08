@@ -1,11 +1,10 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Inject, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, debounceTime, filter, ReplaySubject, startWith, Subject, Subscription, take, tap } from 'rxjs';
+import { BehaviorSubject, combineLatest, debounceTime, filter, interval, ReplaySubject, startWith, Subject, Subscription, take, tap } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
 import { ProcessBuilderRepository } from 'src/lib/core/process-builder-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
 import * as fromIParam from 'src/lib/process-builder/store/reducers/i-param.reducer';
-import * as fromIFunction from 'src/lib/process-builder/store/reducers/i-function.reducer';
 import { selectIParams } from 'src/lib/process-builder/store/selectors/i-param.selectors';
 import { syntaxTree } from "@codemirror/language";
 import { autocompletion, CompletionContext } from "@codemirror/autocomplete";
@@ -20,7 +19,6 @@ import { FormControl, FormGroup } from '@angular/forms';
 import { linter, lintGutter } from '@codemirror/lint';
 // @ts-ignore
 import Linter from "eslint4b-prebuilt";
-import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-embedded-function-implementation',
@@ -74,9 +72,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
 
   constructor(
     @Inject(PROCESS_BUILDER_CONFIG_TOKEN) public config: IProcessBuilderConfig,
-    private _paramStore: Store<fromIParam.State>,
-    private _functionStore: Store<fromIFunction.State>,
-    private _httpClient: HttpClient
+    private _paramStore: Store<fromIParam.State>
   ) { }
 
   blockTabPressEvent(event: KeyboardEvent) {
@@ -87,7 +83,6 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
   }
 
   ngAfterViewInit(): void {
-    if (this.initialValue) this.formGroup.patchValue(this.initialValue);
     this._subscriptions.push(...[
       this.prepareInjector().subscribe({
         complete: () => {
@@ -101,14 +96,8 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
       combineLatest([this.implementationChanged$, this.formGroup.valueChanges.pipe(startWith(this.formGroup.value))])
         .pipe(debounceTime(500))
         .subscribe(([implementation, formValue]: [Text, any]) => {
-          this.valueChange.emit({
-            'canFail': formValue['canFail'],
-            'implementation': implementation,
-            'name': formValue['name'],
-            'normalizedName': formValue['normalizedName'],
-            'outputParamName': formValue['outputParamName'],
-            'normalizedOutputParamName': formValue['normalizedOutputParamName']
-          } as IEmbeddedFunctionImplementationData);
+          this.formGroup.controls['implementation'].setValue(implementation);
+          this.valueChange.emit(this.formGroup.value);
         }),
       this.formGroup.controls['name'].valueChanges.pipe(debounceTime(200)).subscribe(name => this.formGroup.controls['normalizedName'].setValue(ProcessBuilderRepository.normalizeName(name))),
       this.formGroup.controls['outputParamName'].valueChanges.pipe(debounceTime(200)).subscribe(name => this.formGroup.controls['normalizedOutputParamName'].setValue(ProcessBuilderRepository.normalizeName(name))),
@@ -163,7 +152,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
   }
 
   state = () => EditorState.create({
-    doc: this.initialValue?.implementation ?? `/**\n * write your custom code in the method\n * use javascript notation\n * all params available via the injector instance\n */\n\n\async (injector) => {\n  // your code\n}\n`,
+    doc: this.formGroup.controls['implementation'].value ?? `/**\n * write your custom code in the method\n * use javascript notation\n * all params available via the injector instance\n */\n\n\async (injector) => {\n  // your code\n}\n`,
     extensions: [
       basicSetup,
       autocompletion({ override: [this.complete] }),
