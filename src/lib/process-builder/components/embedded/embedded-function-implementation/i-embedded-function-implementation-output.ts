@@ -2,7 +2,7 @@ import { Text } from "@codemirror/state";
 import { IParamKeyValue } from "src/lib/process-builder/globals/i-param-key-value";
 
 export interface IEmbeddedFunctionImplementationData {
-    implementation: Text;
+    implementation: string[];
     name: string;
     canFail: boolean;
     normalizedName: string;

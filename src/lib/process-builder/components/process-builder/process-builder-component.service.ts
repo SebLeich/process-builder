@@ -14,12 +14,15 @@ import CliModule from 'bpmn-js-cli';
 import { ProcessBuilderService } from '../../services/process-builder.service';
 import { BehaviorSubject, delay, Observable, Subject, Subscription, take } from 'rxjs';
 import { Store } from '@ngrx/store';
-import { State } from '../../store/reducers/i-param.reducer';
-import { loadIParams } from '../../store/actions/i-param.actions';
+
+import * as fromIParamState from '../../store/reducers/i-param.reducer';
+import * as fromIFuncState from '../../store/reducers/i-function.reducer';
+
 import { selectIParams } from '../../store/selectors/i-param.selectors';
 import { startEventFilter } from 'src/lib/bpmn-io/rxjs-operators';
 import { IEvent } from 'src/lib/bpmn-io/i-event';
 import { validateBPMNConfig } from 'src/lib/core/config-validator';
+import { selectIFunctions } from '../../store/selectors/i-function.selector';
 
 @Injectable()
 export class ProcessBuilderComponentService {
@@ -34,7 +37,8 @@ export class ProcessBuilderComponentService {
   public modeling: any;
   public eventBus: any;
 
-  public params$ = this._store.select(selectIParams());
+  public params$ = this._paramStore.select(selectIParams());
+  public funcs$ = this._funcStore.select(selectIFunctions());
   public init$ = this._init.pipe(delay(1));
   public shapeCreated$ = this._shapeCreated.asObservable();
 
@@ -42,7 +46,8 @@ export class ProcessBuilderComponentService {
 
   constructor(
     private _injector: Injector,
-    private _store: Store<State>,
+    private _paramStore: Store<fromIParamState.State>,
+    private _funcStore: Store<fromIFuncState.State>,
     private _processBuilderService: ProcessBuilderService
   ) {
     this._setUp();
@@ -111,7 +116,6 @@ export class ProcessBuilderComponentService {
 
     validateBPMNConfig(this.bpmnJS, this._injector);
 
-    this._store.dispatch(loadIParams());
     this._subscriptions.push(...[
       this._shapeCreated.subscribe(x => {
         //console.log(x)

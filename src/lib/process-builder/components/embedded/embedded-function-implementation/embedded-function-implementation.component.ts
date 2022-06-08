@@ -95,8 +95,8 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
       }),
       combineLatest([this.implementationChanged$, this.formGroup.valueChanges.pipe(startWith(this.formGroup.value))])
         .pipe(debounceTime(500))
-        .subscribe(([implementation, formValue]: [Text, any]) => {
-          this.formGroup.controls['implementation'].setValue(implementation);
+        .subscribe(([implementation, formValue]: [any, any]) => {
+          this.formGroup.controls['implementation'].setValue(implementation?.text ?? []);
           this.valueChange.emit(this.formGroup.value);
         }),
       this.formGroup.controls['name'].valueChanges.pipe(debounceTime(200)).subscribe(name => this.formGroup.controls['normalizedName'].setValue(ProcessBuilderRepository.normalizeName(name))),
@@ -152,7 +152,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
   }
 
   state = () => EditorState.create({
-    doc: this.formGroup.controls['implementation'].value ?? `/**\n * write your custom code in the method\n * use javascript notation\n * all params available via the injector instance\n */\n\n\async (injector) => {\n  // your code\n}\n`,
+    doc: Array.isArray(this.formGroup.controls['implementation'].value)? this.formGroup.controls['implementation'].value.join('\n') : `/**\n * write your custom code in the method\n * use javascript notation\n * all params available via the injector instance\n */\n\n\async (injector) => {\n  // your code\n}\n`,
     extensions: [
       basicSetup,
       autocompletion({ override: [this.complete] }),

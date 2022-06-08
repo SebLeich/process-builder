@@ -15,7 +15,17 @@ export const addIFunctions = createAction(
   (funcs: IFunction[]) => ({ funcs })
 );
 
+export const removeIFunction = createAction(
+  '[IFunction] Remove IFunction',
+  (func: IFunction | number) => ({ func })
+);
+
 export const updateIFunction = createAction(
   '[IFunction] Update IFunctions',
   (func: IFunction) => ({ func })
+);
+
+export const upsertIFunctions = createAction(
+  '[IFunction] Upsert IFunctions',
+  (funcs: IFunction[]) => ({ funcs })
 );

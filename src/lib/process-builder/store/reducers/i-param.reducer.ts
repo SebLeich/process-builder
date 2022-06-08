@@ -2,7 +2,7 @@ import { InjectionToken } from '@angular/core';
 import { createEntityAdapter, EntityAdapter, EntityState, Update } from '@ngrx/entity';
 import { createReducer, on, Store } from '@ngrx/store';
 import { IParam } from '../../globals/i-param';
-import { addIParam, addIParams, removeIParam, updateIParam } from '../actions/i-param.actions';
+import { addIParam, addIParams, removeIParam, updateIParam, upsertIParams } from '../actions/i-param.actions';
 
 
 export const featureKey = 'Param';
@@ -52,7 +52,6 @@ export const reducer = createReducer(
   }),
 
   on(updateIParam, (state: State, { param }) => {
-    console.log(param);
     let update: Update<IParam> = {
       'id': param.identifier,
       'changes': {
@@ -61,6 +60,10 @@ export const reducer = createReducer(
       }
     }
     return adapter.updateOne(update, state);
+  }),
+
+  on(upsertIParams, (state: State, { params }) => {
+    return adapter.upsertMany(params, state);
   }),
 
   on(removeIParam, (state: State, { param }) => {

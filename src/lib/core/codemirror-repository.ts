@@ -3,18 +3,18 @@ import { syntaxTree } from "@codemirror/language";
 import { EditorState, Text } from "@codemirror/state";
 import { MethodEvaluationStatus } from "../process-builder/globals/method-evaluation-status";
 import { Tree, SyntaxNode } from 'node_modules/@lezer/common/dist/tree';
-import { insertBracket } from "@codemirror/autocomplete";
-import { deleteLine } from "@codemirror/commands";
 
 export class CodemirrorRepository {
 
-    static evaluateCustomMethod(state?: EditorState, text?: Text): MethodEvaluationStatus {
+    static evaluateCustomMethod(state?: EditorState, text?: string[] | string): MethodEvaluationStatus {
+
+        let convertedText = Array.isArray(text)? text.join('\n'): text;
 
         if (!state) {
             if (!text) throw ('no state and no text passed');
 
             state = EditorState.create({
-                doc: text,
+                doc: convertedText,
                 extensions: [
                     javascript()
                 ]
@@ -32,13 +32,15 @@ export class CodemirrorRepository {
 
     }
 
-    static getMainMethod(tree?: Tree, state?: EditorState, text?: Text): ISyntaxNodeResponse {
+    static getMainMethod(tree?: Tree, state?: EditorState, text?: string[] | string): ISyntaxNodeResponse {
+
+        let convertedText = Array.isArray(text)? text.join('\n'): text;
 
         if (!state) {
             if (!text) throw ('no state and no text passed');
 
             state = EditorState.create({
-                doc: text,
+                doc: convertedText,
                 extensions: [
                     javascript()
                 ]

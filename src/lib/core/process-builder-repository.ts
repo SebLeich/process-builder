@@ -46,7 +46,7 @@ export class ProcessBuilderRepository {
                 index++;
 
             } catch (e) {
-                //debugger;
+                debugger;
             }
 
         }
@@ -105,9 +105,9 @@ export class ProcessBuilderRepository {
         return text.substr(0, 1).toLowerCase() + text.substr(1);
     }
 
-    static testMethodAndGetResponse(doc: Text, injector: any): Observable<any> {
+    static testMethodAndGetResponse(doc: string[], injector: any): Observable<any> {
         let subject = new ReplaySubject<any>(1);
-        let jsText = ((doc as any).text as string[]).join('\n');
+        let jsText = doc.join('\n');
 
         let main: (injector: any) => any | Promise<any> = eval(jsText);
         if (this._returnsPromise(main)) (main(injector) as Promise<any>)

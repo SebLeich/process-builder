@@ -1,7 +1,14 @@
 @import 'src/lib/sass/stretched-element'
 
-::ng-deep .PB_diagram-body, .PB_diagram-body .diagram-wrapper
+.PB_diagram-body
     @include stretched-element
+    display: flex
+
+.PB_diagram-body .diagram-wrapper
+    flex: 1
+
+.PB_diagram-body .info
+    width: 200px
 
 ::ng-deep .PB_diagram-body .diagram-body.not-editable .djs-palette
     display: none

@@ -2,7 +2,7 @@ import { InjectionToken } from '@angular/core';
 import { createEntityAdapter, EntityAdapter, EntityState, Update } from '@ngrx/entity';
 import { createReducer, on, Store } from '@ngrx/store';
 import { IFunction } from '../../globals/i-function';
-import { addIFunction, addIFunctions, updateIFunction } from '../actions/i-function.actions';
+import { addIFunction, addIFunctions, removeIFunction, updateIFunction, upsertIFunctions } from '../actions/i-function.actions';
 
 
 export const featureKey = 'Func';
@@ -37,6 +37,12 @@ export const reducer = createReducer(
     return adapter.addMany(funcs, state);
   }),
 
+  
+  on(removeIFunction, (state: State, { func }) => {
+    let key = typeof func === 'number'? func: func.identifier;
+    return adapter.removeOne(key, state);
+  }),
+
   on(updateIFunction, (state: State, { func }) => {
     let update: Update<IFunction> = {
       'id': func.identifier,
@@ -56,6 +62,10 @@ export const reducer = createReducer(
     return adapter.updateOne(update, state);
   }),
 
+  on(upsertIFunctions, (state: State, { funcs }) => {
+    return adapter.upsertMany(funcs, state);
+  }),
+
 );
 
 export const nextId = (state: State) => {
@@ -63,4 +73,4 @@ export const nextId = (state: State) => {
   return ids.length === 0 ? 0 : Math.max(...(ids.map(x => typeof x === 'number' ? x : 0))) + 1;
 }
 
-export const I_FUNCTION_STORE_TOKEN = new InjectionToken<Store<State>>("I_FUNCTION_STORE");
+export const FUNCTION_STORE_TOKEN = new InjectionToken<Store<State>>("FUNCTION_STORE");

@@ -12,4 +12,19 @@
 
   <div #diagramWrapper class="diagram-wrapper"></div>
 
+  <div class="info">
+
+    <div>
+      {{(processBuilderComponentService.params$|async)?.length ?? 0}} Params
+    </div>
+    <div>
+      {{(processBuilderComponentService.funcs$|async)?.length ?? 0}} Funcs
+    </div>
+
+    <button mat-raised-button color="warn" (click)="clearState()">
+      Clear state
+    </button>
+
+  </div>
+
 </div>

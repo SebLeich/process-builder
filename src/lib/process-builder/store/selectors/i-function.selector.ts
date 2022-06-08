@@ -23,7 +23,7 @@ export const selectIFunctions = (ids?: number[]) => createSelector(
         if (!state || !state.entities) return [];
         let funcs = Object.values(state.entities);
         if (Array.isArray(ids)) funcs = funcs.filter(x => ids.findIndex(y => x?.identifier === y) > -1);
-        return funcs;
+        return funcs as IFunction[];
     }
 );
 

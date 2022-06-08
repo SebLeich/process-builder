@@ -4,7 +4,7 @@ import { IParam } from '../../globals/i-param';
 import * as fromIParam from '../reducers/i-param.reducer';
 
 export const selectIParamState = createFeatureSelector<fromIParam.State>(
-    fromIParam.featureKey
+    fromIParam.featureKey,
 );
 
 export const selectIParam = (arg: ParamCodes | 'dynamic' | undefined | (() => ParamCodes | 'dynamic' | undefined)) => createSelector(
@@ -23,7 +23,8 @@ export const selectIParams = (codes?: ParamCodes[]) => createSelector(
         if (!state || !state.entities) return [];
         let params = Object.values(state.entities);
         if (Array.isArray(codes)) params = params.filter(x => codes.findIndex(y => x?.identifier === y) > -1);
-        return params;
+        console.log(state);
+        return params as IParam[];
     }
 );
 

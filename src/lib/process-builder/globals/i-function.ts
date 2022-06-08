@@ -13,7 +13,7 @@ export interface IFunction {
     output: IOutputParam | null;
     pseudoImplementation: (args?: any) => any;
     canFail: boolean;
-    customImplementation?: any;
+    customImplementation?: string[];
     requireCustomImplementation?: boolean;
 }
 
