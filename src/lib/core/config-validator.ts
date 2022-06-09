@@ -1,5 +1,5 @@
 import { Injector } from "@angular/core";
-import { buffer, combineLatest, debounceTime, filter, ReplaySubject, Subject, switchMap, take, timer } from "rxjs";
+import { buffer, combineLatest, concat, debounceTime, delay, filter, Observable, of, ReplaySubject, Subject, switchMap, take, tap, timer } from "rxjs";
 import bpmnJsEventTypes from "../bpmn-io/bpmn-js-event-types";
 import bpmnJsModules from "../bpmn-io/bpmn-js-modules";
 import { getElementRegistryModule, getModelingModule } from "../bpmn-io/bpmn-modules";
@@ -39,9 +39,9 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
             let service = injector.get(DialogService);
             return service.configTaskCreation(val, bpmnJS);
         })
-    ).subscribe((results) => {
-        for (let result of results) handleTaskCreationComponentOutput(result);
-    });
+    )
+        .pipe(switchMap(results => concat(...(results.map(result => handleTaskCreationComponentOutput(result).pipe(delay(200)))))))
+        .subscribe();
 
     let config: IProcessBuilderConfig = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
     let _connectionCreatePostExecutedActions: { [key: string]: (evt: IConnectionCreatePostExecutedEvent) => void } = {};
@@ -114,89 +114,92 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         _connectionCreatePostExecutedActions[evt.context.connection.type](evt);
     });
 
-    const applyFunctionSelectionConfig = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {
+    const applyFunctionSelectionConfig = (taskCreationComponentOutput: ITaskCreationComponentOutput): Observable<any> => {
 
         let functionIdentifier = taskCreationComponentOutput.value, element: IElement = taskCreationComponentOutput.config.element;
 
         let funcStore = injector.get(FUNCTION_STORE_TOKEN);
-        funcStore.select(fromIFunctionSelector.selectIFunction(functionIdentifier))
-            .pipe(take(1))
-            .subscribe((f: IFunction | undefined | null) => {
+        return combineLatest([funcStore.select(fromIFunctionSelector.selectIFunction(functionIdentifier))])
+            .pipe(
+                take(1),
+                tap(([f]: [IFunction | undefined | null]) => {
 
-                if (!f) {
-                    if (typeof element.data !== 'number') {
-                        getModelingModule(bpmnJS).removeElements([element]);
-                    }
-                    return;
-                }
-                if (f.requireCustomImplementation) return;
-
-                getModelingModule(bpmnJS).updateLabel(element, f.name);
-                element.data = f.identifier;
-
-                if (f.output && !(f.output.param === 'dynamic')) {
-
-                    let outputParamCode = f.output.param;
-
-                    let fileShape = element.outgoing.find(x => x.type === shapeTypes.DataOutputAssociation && x.target?.data.outputParam === outputParamCode)?.target;
-                    if (!fileShape) fileShape = getModelingModule(bpmnJS).appendShape(element, {
-                        type: shapeTypes.DataObjectReference,
-                        data: {
-                            'outputParam': outputParamCode
+                    if (!f) {
+                        if (typeof element.data !== 'number') {
+                            getModelingModule(bpmnJS).removeElements([element]);
                         }
-                    }, { x: element.x + 50, y: element.y - 60 });
-
-                    injector.get(ParamPipe).transform(outputParamCode).pipe(take(1)).subscribe(paramName => getModelingModule(bpmnJS).updateLabel(fileShape!, paramName));
-                }
-
-                if (f.canFail) {
-                    let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
-                    let gatewayShape = element.outgoing.find(x => x.type === shapeTypes.SequenceFlow && x.target?.data.gatewayType === 'error_gateway')?.target;
-                    if(!gatewayShape) gatewayShape = getModelingModule(bpmnJS).appendShape(element, {
-                        type: shapeTypes.ExclusiveGateway,
-                        data: {
-                            'gatewayType': 'error_gateway'
-                        }
-                    }, { x: element.x + 200, y: element.y + 40 });
-
-                    getModelingModule(bpmnJS).updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
-                }
-
-                if (f.inputParams) {
-                    let inputParams = Array.isArray(f.inputParams) ? f.inputParams : [f.inputParams];
-                    let availableInputParamsIElements = BPMNJsRepository.getAvailableInputParamsIElements(element);
-                    for (let param of inputParams) {
-                        let element = availableInputParamsIElements.find(x => x.data['outputParam'] === param.param);
-                        if (!element) continue;
-                        getModelingModule(bpmnJS).connect(element, element);
+                        return;
                     }
-                }
+                    if (f.requireCustomImplementation) return;
+
+                    getModelingModule(bpmnJS).updateLabel(element, f.name);
+                    element.data = f.identifier;
+
+                    if (f.output && !(f.output.param === 'dynamic')) {
+
+                        let outputParamCode = f.output.param;
+
+                        let fileShape = element.outgoing.find(x => x.type === shapeTypes.DataOutputAssociation && x.target?.data.outputParam === outputParamCode)?.target;
+                        if (!fileShape) fileShape = getModelingModule(bpmnJS).appendShape(element, {
+                            type: shapeTypes.DataObjectReference,
+                            data: {
+                                'outputParam': outputParamCode
+                            }
+                        }, { x: element.x + 50, y: element.y - 60 });
+
+                        injector.get(ParamPipe).transform(outputParamCode).pipe(take(1)).subscribe(paramName => getModelingModule(bpmnJS).updateLabel(fileShape!, paramName));
+                    }
+
+                    var gatewayShape = (taskCreationComponentOutput.config.element as IElement).outgoing.find(x => x.type === shapeTypes.SequenceFlow && x.target?.data?.gatewayType === 'error_ gateway')?.target;
+                    if (f.canFail && !gatewayShape) {
+                        let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
+                        gatewayShape = getModelingModule(bpmnJS).appendShape(taskCreationComponentOutput.config.element, {
+                            type: shapeTypes.ExclusiveGateway,
+                            data: {
+                                'gatewayType': 'error_gateway'
+                            }
+                        }, { x: taskCreationComponentOutput.config.element.x + 200, y: taskCreationComponentOutput.config.element.y + 40 });
+                        getModelingModule(bpmnJS).updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
+                    } else if (gatewayShape) getModelingModule(bpmnJS).removeElements([gatewayShape]);
+
+                    if (f.inputParams) {
+                        let inputParams = Array.isArray(f.inputParams) ? f.inputParams : [f.inputParams];
+                        let availableInputParamsIElements = BPMNJsRepository.getAvailableInputParamsIElements(element);
+                        for (let param of inputParams.filter(x => !(taskCreationComponentOutput.config.element as IElement).incoming.some(y => y.source.data?.outputParam === x.param))) {
+                            let element = availableInputParamsIElements.find(x => x.data['outputParam'] === param.param);
+                            if (!element) continue;
+                            getModelingModule(bpmnJS).connect(element, taskCreationComponentOutput.config.element);
+                        }
+                    }
+                })
+            );
+    }
+
+    const applyErrorGatewayEntranceConnection = (evt: IConnectionCreatePostExecutedEvent, e: ErrorGatewayEvent): Observable<any> => {
+        return of(null).pipe(
+            tap(() => {
+                if (typeof e !== 'number') return;
+                let config = injector.get(PROCESS_BUILDER_CONFIG_TOKEN);
+                getModelingModule(bpmnJS).updateLabel(evt.context.connection, e === ErrorGatewayEvent.Success ? config.errorGatewayConfig.successConnectionName : config.errorGatewayConfig.errorConnectionName);
             })
+        );
     }
 
-    const applyErrorGatewayEntranceConnection = (evt: IConnectionCreatePostExecutedEvent, e: ErrorGatewayEvent) => {
-        if (typeof e !== 'number') return;
-        let config = injector.get(PROCESS_BUILDER_CONFIG_TOKEN);
-        getModelingModule(bpmnJS).updateLabel(evt.context.connection, e === ErrorGatewayEvent.Success ? config.errorGatewayConfig.successConnectionName : config.errorGatewayConfig.errorConnectionName);
-    }
+    const applyFunctionImplementationConfig = (taskCreationComponentOutput: ITaskCreationComponentOutput): Observable<any> => {
 
-    const applyFunctionImplementationConfig = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {
-
-        // 
-
-        if (!taskCreationComponentOutput.config.element || !taskCreationComponentOutput.value) return;
+        if (!taskCreationComponentOutput.config.element || !taskCreationComponentOutput.value) return of();
 
         let value = taskCreationComponentOutput.value as IEmbeddedFunctionImplementationData;
         getModelingModule(bpmnJS).updateLabel(taskCreationComponentOutput.config.element, value.name);
 
         let funcStore = injector.get(FUNCTION_STORE_TOKEN), paramStore = injector.get(PARAM_STORE_TOKEN);
-        combineLatest([
+        return combineLatest([
             paramStore.select(fromIParmSelector.selectNextId()),
             funcStore.select(fromIFunctionSelector.selectNextId()),
             funcStore.select(fromIFunctionSelector.selectIFunction(taskCreationComponentOutput.config.element.data))
-        ])
-            .pipe(take(1))
-            .subscribe(([paramId, funcId, existingFun]: [number, number, (IFunction | undefined | null)]) => {
+        ]).pipe(
+            take(1),
+            tap(([paramId, funcId, existingFun]: [number, number, (IFunction | undefined | null)]) => {
 
                 let methodEvaluation = CodemirrorRepository.evaluateCustomMethod(undefined, value.implementation);
                 let modelingModule = getModelingModule(bpmnJS);
@@ -259,70 +262,95 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
                 }
 
-                if(existingFun && !existingFun.requireCustomImplementation) return;
+                if (!existingFun || !existingFun.requireCustomImplementation) {
 
-                let func: IFunction = {
-                    'customImplementation': value.implementation,
-                    'canFail': value.canFail,
-                    'name': value.name,
-                    'identifier': typeof taskCreationComponentOutput.config.element.data !== 'number' ? funcId : taskCreationComponentOutput.config.element.data,
-                    'normalizedName': value.normalizedName,
-                    'output': methodEvaluation === MethodEvaluationStatus.ReturnValueFound && outputParamId ? { param: outputParamId } : null,
-                    'pseudoImplementation': () => { },
-                    'inputParams': null,
-                    'requireCustomImplementation': false
-                };
+                    let funCopy = Object.assign({}, existingFun);
+                    funCopy.name = taskCreationComponentOutput.value.name;
+                    funCopy.canFail = taskCreationComponentOutput.value.canFail;
+                    funcStore.dispatch(updateIFunction(funCopy));
 
-                if (typeof taskCreationComponentOutput.config.element.data !== 'number') {
-                    funcStore.dispatch(addIFunction(func));
-                    taskCreationComponentOutput.config.element.data = funcId;
-                } else funcStore.dispatch(updateIFunction(func));
+                    var gatewayShape: IElement | undefined = (taskCreationComponentOutput.config.element as IElement).outgoing.find(x => x.type === shapeTypes.SequenceFlow && x.target?.data?.gatewayType === 'error_gateway')?.target;
+                    if (funCopy.canFail && !gatewayShape) {
+                        let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
+                        gatewayShape = modelingModule.appendShape(taskCreationComponentOutput.config.element, {
+                            type: shapeTypes.ExclusiveGateway,
+                            data: {
+                                'gatewayType': 'error_gateway'
+                            }
+                        }, { x: taskCreationComponentOutput.config.element.x + 200, y: taskCreationComponentOutput.config.element.y + 40 });
+                        modelingModule.updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
+                    } else if (!funCopy.canFail && gatewayShape) modelingModule.removeElements([gatewayShape]);
 
-                if (func.canFail) {
-                    let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
-                    let gatewayShape = modelingModule.appendShape(taskCreationComponentOutput.config.element, {
-                        type: shapeTypes.ExclusiveGateway,
-                        data: {
-                            'gatewayType': 'error_gateway'
-                        }
-                    }, { x: taskCreationComponentOutput.config.element.x + 200, y: taskCreationComponentOutput.config.element.y + 40 });
-                    modelingModule.updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
+                    return;
+
                 }
 
                 let inputParams = CodemirrorRepository.getUsedInputParams(undefined, value.implementation);
                 paramStore.select(fromIParmSelector.selectIParamsByNormalizedName(inputParams.filter(x => x.varName === 'injector' && typeof x.propertyName === 'string').map(x => x.propertyName!)))
                     .pipe(take(1))
                     .subscribe(iParams => {
-                        let availableInputElements = BPMNJsRepository.getAvailableInputParamsIElements(taskCreationComponentOutput.config.element).filter(x => iParams.findIndex(y => y.normalizedName === x.data.outputParam));
-                        for (let element of availableInputElements) {
-                            if (!element) continue;
-                            getModelingModule(bpmnJS).connect(element, taskCreationComponentOutput.config.element);
+
+                        let func: IFunction = {
+                            'customImplementation': value.implementation,
+                            'canFail': value.canFail,
+                            'name': value.name,
+                            'identifier': typeof taskCreationComponentOutput.config.element.data !== 'number' ? funcId : taskCreationComponentOutput.config.element.data,
+                            'normalizedName': value.normalizedName,
+                            'output': methodEvaluation === MethodEvaluationStatus.ReturnValueFound && outputParamId ? { param: outputParamId } : null,
+                            'pseudoImplementation': () => { },
+                            'inputParams': iParams.map(x => {
+                                return { 'optional': false, 'param': x.identifier }
+                            }),
+                            'requireCustomImplementation': false
+                        };
+
+                        if (typeof taskCreationComponentOutput.config.element.data !== 'number') {
+                            funcStore.dispatch(addIFunction(func));
+                            taskCreationComponentOutput.config.element.data = funcId;
+                        } else funcStore.dispatch(updateIFunction(func));
+
+                        if (func.canFail) {
+                            let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
+                            let gatewayShape = modelingModule.appendShape(taskCreationComponentOutput.config.element, {
+                                type: shapeTypes.ExclusiveGateway,
+                                data: {
+                                    'gatewayType': 'error_gateway'
+                                }
+                            }, { x: taskCreationComponentOutput.config.element.x + 200, y: taskCreationComponentOutput.config.element.y + 40 });
+                            modelingModule.updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
                         }
+
+                        if (func.inputParams) {
+                            let inputParams = Array.isArray(func.inputParams) ? func.inputParams : [func.inputParams];
+                            let availableInputParamsIElements = BPMNJsRepository.getAvailableInputParamsIElements(taskCreationComponentOutput.config.element);
+                            for (let param of inputParams.filter(x => !(taskCreationComponentOutput.config.element as IElement).incoming.some(y => y.source.data?.outputParam === x.param))) {
+                                let element = availableInputParamsIElements.find(x => x.data['outputParam'] === param.param);
+                                if (!element) continue;
+                                getModelingModule(bpmnJS).connect(element, taskCreationComponentOutput.config.element);
+                            }
+                        }
+
                     });
 
-
-            });
+            })
+        );
     }
 
-    const handleTaskCreationComponentOutput = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {
+    const handleTaskCreationComponentOutput = (taskCreationComponentOutput: ITaskCreationComponentOutput): Observable<any> => {
 
         switch (taskCreationComponentOutput.config.taskCreationStep) {
 
             case TaskCreationStep.ConfigureErrorGatewayEntranceConnection:
-                applyErrorGatewayEntranceConnection(taskCreationComponentOutput.config.payload, taskCreationComponentOutput.value);
-                break;
+                return applyErrorGatewayEntranceConnection(taskCreationComponentOutput.config.payload, taskCreationComponentOutput.value);
 
             case TaskCreationStep.ConfigureFunctionSelection:
-                applyFunctionSelectionConfig(taskCreationComponentOutput);
-                break;
+                return applyFunctionSelectionConfig(taskCreationComponentOutput);
 
             case TaskCreationStep.ConfigureFunctionImplementation:
-                applyFunctionImplementationConfig(taskCreationComponentOutput);
-                break;
+                return applyFunctionImplementationConfig(taskCreationComponentOutput);
 
             case TaskCreationStep.ConfigureFunctionOutput:
-                applyFunctionImplementationConfig(taskCreationComponentOutput);
-                break;
+                return applyFunctionImplementationConfig(taskCreationComponentOutput);
 
         }
 

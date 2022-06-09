@@ -85,19 +85,26 @@ export class CodemirrorRepository {
         for (let candidate of candidates) {
 
             let statement: SyntaxNode | null = candidate;
-            while (statement && statement.type.name !== 'MemberExpression'){
+            while (statement && statement.type.name !== 'MemberExpression') {
                 let result = this.iterateToMemberStatementNode(statement);
                 statement = result[0] ?? null;
-                candidates.push(...result.slice(1));               
+                candidates.push(...result.slice(1));
             }
 
             let variableNameNode = this.extractMemberExpressionVariableNameNode(statement);
             if (variableNameNode == null) continue;
 
+            var varNodeName = convertedText!.slice(variableNameNode.from, variableNameNode.to);
+
+            if (varNodeName === 'console') {
+                if (statement.nextSibling) candidates.push(statement.nextSibling);
+                continue;
+            }
+
             let propertyNameNode = variableNameNode.nextSibling?.nextSibling;
 
             output.push({
-                'varName': convertedText!.slice(variableNameNode.from, variableNameNode.to),
+                'varName': varNodeName,
                 'propertyName': convertedText?.slice(propertyNameNode?.from, propertyNameNode?.to) ?? null
             });
         }
@@ -112,7 +119,7 @@ export class CodemirrorRepository {
             ...blockNode.getChildren('ObjectExpression')
         ] : [];
         blockNode?.getChildren("ReturnStatement").forEach(statement => {
-            candidates.push(...statement.getChildren('ObjectExpression'));
+            candidates.push(...statement.getChildren('ObjectExpression'), ...statement.getChildren('ArrayExpression'));
         });
         return candidates;
     }
@@ -128,24 +135,30 @@ export class CodemirrorRepository {
         if (node == null) return [];
         switch (node.type.name) {
             case '{':
+            case '[':
             case 'LineComment':
             case 'var':
             case 'VariableDefinition':
             case 'Equals':
             case 'return':
             case 'PropertyDefinition':
+            case 'String':
             case ':':
-                return node.nextSibling ? [node.nextSibling]: [];
+                return node.nextSibling ? [node.nextSibling] : [];
 
             case 'ExpressionStatement':
             case 'CallExpression':
             case 'VariableDeclaration':
             case 'ReturnStatement':
             case 'Property':
-                return node.firstChild ? [node.firstChild]: [];
+                return node.firstChild ? [node.firstChild] : [];
 
             case 'ObjectExpression':
                 return node.getChildren('Property');
+
+            case 'ArrayExpression':
+            case 'ArgList':
+                return node.getChildren('MemberExpression');
         }
         return [];
     }

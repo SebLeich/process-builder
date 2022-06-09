@@ -23,7 +23,6 @@ export class BPMNJsRepository {
     static getAvailableInputParamsIElements(element: IElement) {
         let anchestors: IElement[] = [];
         this.fillAnchestors(element, anchestors);
-        console.log(anchestors);
         let tasks = anchestors.filter(x => x.type === shapeTypes.Task);
         let outputParams = tasks.flatMap(x => x.outgoing).filter(x => x.type === shapeTypes.DataOutputAssociation).map(x => x.target);
         return outputParams.filter(x => 'outputParam' in x.data) as IElement[];
