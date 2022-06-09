@@ -1,7 +1,7 @@
-import { Component, Inject, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, filter, interval, map, Observable, of, ReplaySubject, Subject, switchMap, take } from 'rxjs';
+import { BehaviorSubject, combineLatest, debounceTime, filter, interval, map, Observable, of, ReplaySubject, Subject, Subscription, switchMap, take } from 'rxjs';
 import { IElement } from 'src/lib/bpmn-io/i-element';
 import { BPMNJsRepository } from 'src/lib/core/bpmn-js-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
@@ -32,7 +32,7 @@ import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/pro
   templateUrl: './task-creation.component.html',
   styleUrls: ['./task-creation.component.sass']
 })
-export class TaskCreationComponent implements OnInit {
+export class TaskCreationComponent implements OnDestroy, OnInit {
 
   @ViewChild('dynamicInner', { static: true, read: ViewContainerRef }) dynamicInner!: ViewContainerRef;
 
@@ -84,6 +84,9 @@ export class TaskCreationComponent implements OnInit {
 
   formGroup!: FormGroup;
 
+  private _lastStepSub: Subscription | undefined;
+  private _subscriptions: Subscription[] = [];
+
   constructor(
     private _ref: MatDialogRef<TaskCreationComponent>,
     @Inject(PROCESS_BUILDER_CONFIG_TOKEN) public config: IProcessBuilderConfig,
@@ -113,6 +116,11 @@ export class TaskCreationComponent implements OnInit {
       value.value = this.formGroup.value;
     }
     this._ref.close(this.values);
+  }
+
+  ngOnDestroy(): void {
+    for (let sub of this._subscriptions) sub.unsubscribe();
+    this._subscriptions = [];
   }
 
   ngOnInit(): void {
@@ -147,6 +155,14 @@ export class TaskCreationComponent implements OnInit {
       if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionSelection && preSelected) this.validateFunctionSelection(preSelected, step.element);
     }
     this.setStep(0);
+
+    this._subscriptions.push(...[
+      this.formGroup.controls['implementation'].valueChanges.pipe(debounceTime(2000)).subscribe(() => {
+          let value = this.formGroup.controls['implementation'].value;
+          let inputs = CodemirrorRepository.getUsedInputParams(undefined, value).map(x => x.propertyName).filter((x, index, array) => array.indexOf(x) === index);
+          this._statusMessage.next(`input params: ${inputs.length === 0 ? '-' : inputs.join(', ')}`);
+        })
+    ]);
   }
 
   setStep(index: number) {
@@ -162,7 +178,13 @@ export class TaskCreationComponent implements OnInit {
       if (typeof this.stepRegistry[step.taskCreationStep].provideInputParams === 'function') this.stepRegistry[step.taskCreationStep].provideInputParams!(component.instance, step.element);
 
       component.instance.initialValue = this.values[index].value;
-      component.instance.valueChange.subscribe((value: any) => {
+
+      if (this._lastStepSub) {
+        this._lastStepSub.unsubscribe();
+        this._lastStepSub = undefined;
+      }
+
+      this._lastStepSub = component.instance.valueChange.subscribe((value: any) => {
 
         this.values.find(x => x.config.taskCreationStep === step.taskCreationStep)!.value = value;
         let nextIndex = index + 1;

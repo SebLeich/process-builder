@@ -1,4 +1,3 @@
-import { Text } from "@codemirror/state";
 import { Observable, ReplaySubject } from "rxjs";
 import { IParamKeyValue } from "../process-builder/globals/i-param-key-value";
 

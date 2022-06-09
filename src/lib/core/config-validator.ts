@@ -32,11 +32,15 @@ import { CodemirrorRepository } from "./codemirror-repository";
 export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
     let taskCreationSubject = new Subject<ITaskCreationConfig>();
-    taskCreationSubject.pipe(buffer(taskCreationSubject.pipe(debounceTime(100))), filter(x => x.length > 0)).subscribe((val) => {
-        let service = injector.get(DialogService);
-        service.configTaskCreation(val, bpmnJS).subscribe((results) => {
-            for (let result of results) handleTaskCreationComponentOutput(result);
-        });
+    taskCreationSubject.pipe(
+        buffer(taskCreationSubject.pipe(debounceTime(100))),
+        filter(x => x.length > 0),
+        switchMap(val => {
+            let service = injector.get(DialogService);
+            return service.configTaskCreation(val, bpmnJS);
+        })
+    ).subscribe((results) => {
+        for (let result of results) handleTaskCreationComponentOutput(result);
     });
 
     let config: IProcessBuilderConfig = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
@@ -112,12 +116,13 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
     const applyFunctionSelectionConfig = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {
 
-        let functionIdentifier = taskCreationComponentOutput.value, element = taskCreationComponentOutput.config.element;
+        let functionIdentifier = taskCreationComponentOutput.value, element: IElement = taskCreationComponentOutput.config.element;
 
         let funcStore = injector.get(FUNCTION_STORE_TOKEN);
         funcStore.select(fromIFunctionSelector.selectIFunction(functionIdentifier))
             .pipe(take(1))
             .subscribe((f: IFunction | undefined | null) => {
+
                 if (!f) {
                     if (typeof element.data !== 'number') {
                         getModelingModule(bpmnJS).removeElements([element]);
@@ -125,30 +130,38 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                     return;
                 }
                 if (f.requireCustomImplementation) return;
-        
+
                 getModelingModule(bpmnJS).updateLabel(element, f.name);
                 element.data = f.identifier;
-        
+
                 if (f.output && !(f.output.param === 'dynamic')) {
+
                     let outputParamCode = f.output.param;
-                    let fileShape = getModelingModule(bpmnJS).appendShape(element, {
+
+                    let fileShape = element.outgoing.find(x => x.type === shapeTypes.DataOutputAssociation && x.target?.data.outputParam === outputParamCode)?.target;
+                    if (!fileShape) fileShape = getModelingModule(bpmnJS).appendShape(element, {
                         type: shapeTypes.DataObjectReference,
                         data: {
                             'outputParam': outputParamCode
                         }
                     }, { x: element.x + 50, y: element.y - 60 });
-                    injector.get(ParamPipe).transform(outputParamCode).subscribe(paramName => getModelingModule(bpmnJS).updateLabel(fileShape, paramName));
+
+                    injector.get(ParamPipe).transform(outputParamCode).pipe(take(1)).subscribe(paramName => getModelingModule(bpmnJS).updateLabel(fileShape!, paramName));
                 }
+
                 if (f.canFail) {
                     let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
-                    let gatewayShape = getModelingModule(bpmnJS).appendShape(element, {
+                    let gatewayShape = element.outgoing.find(x => x.type === shapeTypes.SequenceFlow && x.target?.data.gatewayType === 'error_gateway')?.target;
+                    if(!gatewayShape) gatewayShape = getModelingModule(bpmnJS).appendShape(element, {
                         type: shapeTypes.ExclusiveGateway,
                         data: {
                             'gatewayType': 'error_gateway'
                         }
                     }, { x: element.x + 200, y: element.y + 40 });
+
                     getModelingModule(bpmnJS).updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
                 }
+
                 if (f.inputParams) {
                     let inputParams = Array.isArray(f.inputParams) ? f.inputParams : [f.inputParams];
                     let availableInputParamsIElements = BPMNJsRepository.getAvailableInputParamsIElements(element);
@@ -169,6 +182,8 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
     const applyFunctionImplementationConfig = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {
 
+        // 
+
         if (!taskCreationComponentOutput.config.element || !taskCreationComponentOutput.value) return;
 
         let value = taskCreationComponentOutput.value as IEmbeddedFunctionImplementationData;
@@ -179,97 +194,114 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
             paramStore.select(fromIParmSelector.selectNextId()),
             funcStore.select(fromIFunctionSelector.selectNextId()),
             funcStore.select(fromIFunctionSelector.selectIFunction(taskCreationComponentOutput.config.element.data))
-        ]).pipe(take(1)).subscribe(([paramId, funcId, existingFun]: [number, number, (IFunction | undefined | null)]) => {
+        ])
+            .pipe(take(1))
+            .subscribe(([paramId, funcId, existingFun]: [number, number, (IFunction | undefined | null)]) => {
 
-            let methodEvaluation = CodemirrorRepository.evaluateCustomMethod(undefined, value.implementation);
+                let methodEvaluation = CodemirrorRepository.evaluateCustomMethod(undefined, value.implementation);
+                let modelingModule = getModelingModule(bpmnJS);
 
-            let outputParamId: number | null = paramId;
+                let outputParamId: number | null = paramId;
 
-            if (existingFun) {
+                if (existingFun) {
 
-                if (methodEvaluation === MethodEvaluationStatus.ReturnValueFound) {
+                    if (methodEvaluation === MethodEvaluationStatus.ReturnValueFound) {
 
-                    if (typeof existingFun.output?.param === 'number') outputParamId = existingFun.output?.param;
+                        if (typeof existingFun.output?.param === 'number') outputParamId = existingFun.output?.param;
+                        let param = {
+                            'name': value.outputParamName,
+                            'normalizedName': value.normalizedOutputParamName,
+                            'identifier': outputParamId,
+                            'value': value.outputParamValue
+                        } as IParam;
+
+                        if (typeof existingFun.output?.param === 'number') {
+                            paramStore.dispatch(updateIParam(param));
+                            let fileShape = (taskCreationComponentOutput.config.element as IElement).outgoing.map(x => x.target).find(x => x.type === shapeTypes.DataObjectReference && x.data?.outputParam === param.identifier);
+                            if (fileShape) getModelingModule(bpmnJS).updateLabel(fileShape, param.name);
+                        }
+                        else {
+                            paramStore.dispatch(addIParam(param));
+                            let fileShape = getModelingModule(bpmnJS).appendShape(taskCreationComponentOutput.config.element, {
+                                type: shapeTypes.DataObjectReference,
+                                data: {
+                                    'outputParam': outputParamId
+                                }
+                            }, { x: taskCreationComponentOutput.config.element.x + 50, y: taskCreationComponentOutput.config.element.y - 60 });
+                            getModelingModule(bpmnJS).updateLabel(fileShape, param.name);
+                        }
+
+                    } else if (typeof existingFun.output?.param === 'number') {
+
+                        modelingModule.removeElements((taskCreationComponentOutput.config.element as IElement).outgoing.map(x => x.target).filter(x => x.type === shapeTypes.DataObjectReference));
+                        paramStore.dispatch(removeIParam(existingFun.output.param));
+                        outputParamId = null;
+
+                    }
+
+                } else if (methodEvaluation === MethodEvaluationStatus.ReturnValueFound) {
+
                     let param = {
                         'name': value.outputParamName,
                         'normalizedName': value.normalizedOutputParamName,
                         'identifier': outputParamId,
                         'value': value.outputParamValue
                     } as IParam;
+                    paramStore.dispatch(addIParam(param));
 
-                    if (typeof existingFun.output?.param === 'number') {
-                        paramStore.dispatch(updateIParam(param));
-                        let fileShape = (taskCreationComponentOutput.config.element as IElement).outgoing.map(x => x.target).find(x => x.type === shapeTypes.DataObjectReference && x.data?.outputParam === param.identifier);
-                        if (fileShape) getModelingModule(bpmnJS).updateLabel(fileShape, param.name);
-                    }
-                    else {
-                        paramStore.dispatch(addIParam(param));
-                        let fileShape = getModelingModule(bpmnJS).appendShape(taskCreationComponentOutput.config.element, {
-                            type: shapeTypes.DataObjectReference,
-                            data: {
-                                'outputParam': outputParamId
-                            }
-                        }, { x: taskCreationComponentOutput.config.element.x + 50, y: taskCreationComponentOutput.config.element.y - 60 });
-                        getModelingModule(bpmnJS).updateLabel(fileShape, param.name);
-                    }
-
-                } else if (typeof existingFun.output?.param === 'number') {
-
-                    getModelingModule(bpmnJS).removeElements((taskCreationComponentOutput.config.element as IElement).outgoing.map(x => x.target).filter(x => x.type === shapeTypes.DataObjectReference));
-                    paramStore.dispatch(removeIParam(existingFun.output.param));
-                    outputParamId = null;
+                    let fileShape = getModelingModule(bpmnJS).appendShape(taskCreationComponentOutput.config.element, {
+                        type: shapeTypes.DataObjectReference,
+                        data: {
+                            'outputParam': outputParamId
+                        }
+                    }, { x: taskCreationComponentOutput.config.element.x + 50, y: taskCreationComponentOutput.config.element.y - 60 });
+                    getModelingModule(bpmnJS).updateLabel(fileShape, param.name);
 
                 }
 
-            } else if (methodEvaluation === MethodEvaluationStatus.ReturnValueFound) {
+                if(existingFun && !existingFun.requireCustomImplementation) return;
 
-                let param = {
-                    'name': value.outputParamName,
-                    'normalizedName': value.normalizedOutputParamName,
-                    'identifier': outputParamId,
-                    'value': value.outputParamValue
-                } as IParam;
-                paramStore.dispatch(addIParam(param));
+                let func: IFunction = {
+                    'customImplementation': value.implementation,
+                    'canFail': value.canFail,
+                    'name': value.name,
+                    'identifier': typeof taskCreationComponentOutput.config.element.data !== 'number' ? funcId : taskCreationComponentOutput.config.element.data,
+                    'normalizedName': value.normalizedName,
+                    'output': methodEvaluation === MethodEvaluationStatus.ReturnValueFound && outputParamId ? { param: outputParamId } : null,
+                    'pseudoImplementation': () => { },
+                    'inputParams': null,
+                    'requireCustomImplementation': false
+                };
 
-                let fileShape = getModelingModule(bpmnJS).appendShape(taskCreationComponentOutput.config.element, {
-                    type: shapeTypes.DataObjectReference,
-                    data: {
-                        'outputParam': outputParamId
-                    }
-                }, { x: taskCreationComponentOutput.config.element.x + 50, y: taskCreationComponentOutput.config.element.y - 60 });
-                getModelingModule(bpmnJS).updateLabel(fileShape, param.name);
+                if (typeof taskCreationComponentOutput.config.element.data !== 'number') {
+                    funcStore.dispatch(addIFunction(func));
+                    taskCreationComponentOutput.config.element.data = funcId;
+                } else funcStore.dispatch(updateIFunction(func));
 
-            }
+                if (func.canFail) {
+                    let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
+                    let gatewayShape = modelingModule.appendShape(taskCreationComponentOutput.config.element, {
+                        type: shapeTypes.ExclusiveGateway,
+                        data: {
+                            'gatewayType': 'error_gateway'
+                        }
+                    }, { x: taskCreationComponentOutput.config.element.x + 200, y: taskCreationComponentOutput.config.element.y + 40 });
+                    modelingModule.updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
+                }
 
-            let func: IFunction = {
-                'customImplementation': value.implementation,
-                'canFail': value.canFail,
-                'name': value.name,
-                'identifier': typeof taskCreationComponentOutput.config.element.data !== 'number' ? funcId : taskCreationComponentOutput.config.element.data,
-                'normalizedName': value.normalizedName,
-                'output': methodEvaluation === MethodEvaluationStatus.ReturnValueFound && outputParamId ? { param: outputParamId } : null,
-                'pseudoImplementation': () => { },
-                'inputParams': null,
-                'requireCustomImplementation': false
-            };
+                let inputParams = CodemirrorRepository.getUsedInputParams(undefined, value.implementation);
+                paramStore.select(fromIParmSelector.selectIParamsByNormalizedName(inputParams.filter(x => x.varName === 'injector' && typeof x.propertyName === 'string').map(x => x.propertyName!)))
+                    .pipe(take(1))
+                    .subscribe(iParams => {
+                        let availableInputElements = BPMNJsRepository.getAvailableInputParamsIElements(taskCreationComponentOutput.config.element).filter(x => iParams.findIndex(y => y.normalizedName === x.data.outputParam));
+                        for (let element of availableInputElements) {
+                            if (!element) continue;
+                            getModelingModule(bpmnJS).connect(element, taskCreationComponentOutput.config.element);
+                        }
+                    });
 
-            if (typeof taskCreationComponentOutput.config.element.data !== 'number') {
-                funcStore.dispatch(addIFunction(func));
-                taskCreationComponentOutput.config.element.data = funcId;
-            } else funcStore.dispatch(updateIFunction(func));
 
-            if (func.canFail) {
-                let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
-                let gatewayShape = getModelingModule(bpmnJS).appendShape(taskCreationComponentOutput.config.element, {
-                    type: shapeTypes.ExclusiveGateway,
-                    data: {
-                        'gatewayType': 'error_gateway'
-                    }
-                }, { x: taskCreationComponentOutput.config.element.x + 200, y: taskCreationComponentOutput.config.element.y + 40 });
-                getModelingModule(bpmnJS).updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
-            }
-
-        });
+            });
     }
 
     const handleTaskCreationComponentOutput = (taskCreationComponentOutput: ITaskCreationComponentOutput) => {

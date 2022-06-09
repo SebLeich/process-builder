@@ -93,18 +93,20 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
           this._implementationChanged.next(this.codeMirror.state.doc);
         }
       }),
-      combineLatest([this.implementationChanged$, this.formGroup.valueChanges.pipe(startWith(this.formGroup.value))])
-        .pipe(debounceTime(500))
-        .subscribe(([implementation, formValue]: [any, any]) => {
-          this.formGroup.controls['implementation'].setValue(implementation?.text ?? []);
-          this.valueChange.emit(this.formGroup.value);
-        }),
+      this.formGroup.valueChanges.pipe(startWith(this.formGroup.value), debounceTime(500)).subscribe((value) => {
+        this.valueChange.emit(value);
+      }),
+      this.implementationChanged$.pipe(debounceTime(500)).subscribe((value) => {
+        this.formGroup.controls['implementation'].setValue((value as any)?.text);
+      }),
       this.formGroup.controls['name'].valueChanges.pipe(debounceTime(200)).subscribe(name => this.formGroup.controls['normalizedName'].setValue(ProcessBuilderRepository.normalizeName(name))),
       this.formGroup.controls['outputParamName'].valueChanges.pipe(debounceTime(200)).subscribe(name => this.formGroup.controls['normalizedOutputParamName'].setValue(ProcessBuilderRepository.normalizeName(name))),
       this._implementationChanged.pipe(
         tap(() => this._returnValueStatus.next(MethodEvaluationStatus.Calculating)),
         debounceTime(500)
-      ).subscribe(() => this._returnValueStatus.next(CodemirrorRepository.evaluateCustomMethod(this.codeMirror.state))),
+      ).subscribe(() => {
+        this._returnValueStatus.next(CodemirrorRepository.evaluateCustomMethod(this.codeMirror.state));
+      }),
       this.returnValueStatus$.subscribe(status => status === MethodEvaluationStatus.ReturnValueFound ? this.formGroup.controls['outputParamName'].enable() : this.formGroup.controls['outputParamName'].disable())
     ]);
   }
@@ -122,7 +124,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
         .pipe(take(1), filter(x => x ? true : false))
         .subscribe(allParams => {
           for (let key of Object.keys(this.paramInjector.injector)) delete this.paramInjector.injector[key];
-          for (let param of allParams) this.paramInjector.injector[param!.normalizedName] = ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(param!.value);
+          for (let param of allParams) this.paramInjector.injector[param!.normalizedName] = ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(Object.assign({}, param!.value));
           for (let param of this.staticParams) this.paramInjector.injector[param.normalizedName] = param.value;
           subject.next();
           subject.complete();
@@ -152,7 +154,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
   }
 
   state = () => EditorState.create({
-    doc: Array.isArray(this.formGroup.controls['implementation'].value)? this.formGroup.controls['implementation'].value.join('\n') : `/**\n * write your custom code in the method\n * use javascript notation\n * all params available via the injector instance\n */\n\n\async (injector) => {\n  // your code\n}\n`,
+    doc: Array.isArray(this.formGroup.controls['implementation'].value) ? this.formGroup.controls['implementation'].value.join('\n') : `/**\n * write your custom code in the method\n * use javascript notation\n * all params available via the injector instance\n */\n\n\async (injector) => {\n  // your code\n}\n`,
     extensions: [
       basicSetup,
       autocompletion({ override: [this.complete] }),
@@ -182,6 +184,7 @@ const dontCompleteIn = [
   "(",
   "{",
   ";",
+  ",",
   "PropertyName",
   "TemplateString",
   "LineComment",
