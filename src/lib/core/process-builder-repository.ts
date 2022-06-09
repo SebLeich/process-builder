@@ -105,6 +105,7 @@ export class ProcessBuilderRepository {
     }
 
     static testMethodAndGetResponse(doc: string[], injector: any): Observable<any> {
+
         let subject = new ReplaySubject<any>(1);
         let jsText = doc.join('\n');
 

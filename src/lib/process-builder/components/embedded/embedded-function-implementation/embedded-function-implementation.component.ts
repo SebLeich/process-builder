@@ -1,11 +1,10 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Inject, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, debounceTime, filter, interval, ReplaySubject, startWith, Subject, Subscription, take, tap } from 'rxjs';
+import { BehaviorSubject, debounceTime, ReplaySubject, startWith, Subscription, tap } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
 import { ProcessBuilderRepository } from 'src/lib/core/process-builder-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
 import * as fromIParam from 'src/lib/process-builder/store/reducers/i-param.reducer';
-import { selectIParams } from 'src/lib/process-builder/store/selectors/i-param.selectors';
 import { syntaxTree } from "@codemirror/language";
 import { autocompletion, CompletionContext } from "@codemirror/autocomplete";
 import { EditorState, Text } from '@codemirror/state';
@@ -19,6 +18,7 @@ import { FormControl, FormGroup } from '@angular/forms';
 import { linter, lintGutter } from '@codemirror/lint';
 // @ts-ignore
 import Linter from "eslint4b-prebuilt";
+import { INJECTOR_INTERFACE_TOKEN } from 'src/lib/process-builder/globals/injector';
 
 @Component({
   selector: 'app-embedded-function-implementation',
@@ -43,17 +43,6 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
     'parseInt()': { type: 'function' },
     'var': { type: 'variable' },
   };
-  paramInjector: any = { injector: {} };
-  staticParams = [
-    {
-      normalizedName: 'httpClient', value: {
-        'get()': { type: 'function', apply: 'get(/*url*/).toPromise()', info: 'asynchronously' },
-        'post()': { type: 'function', apply: 'post(/*url*/, /*data*/).toPromise()', info: 'asynchronously' },
-        'put()': { type: 'function', apply: 'put(/*url*/, /*data*/).toPromise()', info: 'asynchronously' },
-        'delete()': { type: 'function', apply: 'delete(/*url*/).toPromise()', info: 'asynchronously' }
-      }
-    }
-  ]
 
   varNameInjector: any = {
     'var1': { type: 'variable' },
@@ -72,7 +61,8 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
 
   constructor(
     @Inject(PROCESS_BUILDER_CONFIG_TOKEN) public config: IProcessBuilderConfig,
-    private _paramStore: Store<fromIParam.State>
+    @Inject(INJECTOR_INTERFACE_TOKEN) private _injector: object,
+    private _paramStore: Store<fromIParam.State>,
   ) { }
 
   blockTabPressEvent(event: KeyboardEvent) {
@@ -84,15 +74,6 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
 
   ngAfterViewInit(): void {
     this._subscriptions.push(...[
-      this.prepareInjector().subscribe({
-        complete: () => {
-          this.codeMirror = new EditorView({
-            state: this.state(),
-            parent: this.codeBody.nativeElement
-          });
-          this._implementationChanged.next(this.codeMirror.state.doc);
-        }
-      }),
       this.formGroup.valueChanges.pipe(startWith(this.formGroup.value), debounceTime(500)).subscribe((value) => {
         this.valueChange.emit(value);
       }),
@@ -109,28 +90,16 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
       }),
       this.returnValueStatus$.subscribe(status => status === MethodEvaluationStatus.ReturnValueFound ? this.formGroup.controls['outputParamName'].enable() : this.formGroup.controls['outputParamName'].disable())
     ]);
+    this.codeMirror = new EditorView({
+      state: this.state(),
+      parent: this.codeBody.nativeElement
+    });
+    this._implementationChanged.next(this.codeMirror.state.doc);
   }
 
   ngOnDestroy(): void {
     for (let sub of this._subscriptions) sub.unsubscribe();
     this._subscriptions = [];
-  }
-
-  prepareInjector() {
-    let subject = new Subject<void>();
-    let inputParams = Array.isArray(this.inputParams) ? this.inputParams : this.inputParams ? [this.inputParams] : [];
-    this._subscriptions.push(...[
-      this._paramStore.select(selectIParams(inputParams))
-        .pipe(take(1), filter(x => x ? true : false))
-        .subscribe(allParams => {
-          for (let key of Object.keys(this.paramInjector.injector)) delete this.paramInjector.injector[key];
-          for (let param of allParams) this.paramInjector.injector[param!.normalizedName] = ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(Object.assign({}, param!.value));
-          for (let param of this.staticParams) this.paramInjector.injector[param.normalizedName] = param.value;
-          subject.next();
-          subject.complete();
-        })
-    ]);
-    return subject.asObservable();
   }
 
   complete = (context: CompletionContext) => {
@@ -141,13 +110,12 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
       if (object?.name === 'VariableName' || object?.name === 'MemberExpression') {
         let from = /\./.test(nodeBefore.name) ? nodeBefore.to : nodeBefore.from;
         let variableName = context.state.sliceDoc(object.from, object.to);
-        if (typeof byString(this.paramInjector, variableName) === "object")
-          return completeProperties(from, byString(this.paramInjector, variableName) as any)
+        if (typeof byString(this._injector, variableName) === "object") return completeProperties(from, byString(this._injector, variableName) as any)
       }
     } else if (nodeBefore.name == "VariableName") {
       return completeProperties(nodeBefore.from, this.globalsInjector);
     } else if (/*context.explicit && */!dontCompleteIn.includes(nodeBefore.name)) {
-      return completeProperties(context.pos, this.paramInjector);
+      return completeProperties(context.pos, this._injector as any);
     }
 
     return null
@@ -194,7 +162,7 @@ const dontCompleteIn = [
 ]
 
 function completeProperties(from: number, object: { type: string, apply?: string }) {
-  let options = []
+  let options = [];
   for (let name in object) {
     let option = {
       label: name,

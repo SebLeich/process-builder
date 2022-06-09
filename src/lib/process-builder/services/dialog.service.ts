@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Observable } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
+import { IElement } from 'src/lib/bpmn-io/i-element';
 import { ParamEditorComponent } from '../components/dialog/param-editor/param-editor.component';
 import { ITaskCreationComponentInput } from '../components/dialog/task-creation/i-task-creation-component-input';
 import { ITaskCreationComponentOutput } from '../components/dialog/task-creation/i-task-creation-component-output';
@@ -19,12 +20,13 @@ export class DialogService {
     @Inject(FUNCTIONS_CONFIG_TOKEN) public funcs: IFunction[]
   ) { }
 
-  configTaskCreation(steps: ITaskCreationConfig[], bpmnJS: any): Observable<ITaskCreationComponentOutput[]> {
+  configTaskCreation(steps: ITaskCreationConfig[], bpmnJS: any, element: IElement): Observable<ITaskCreationComponentOutput[]> {
     let ref = this._dialog.open(TaskCreationComponent, {
       panelClass: 'no-padding-dialog',
       data: {
         'steps': steps, 
-        'bpmnJS': bpmnJS
+        'bpmnJS': bpmnJS,
+        'element': element
       } as ITaskCreationComponentInput,
       disableClose: true
     });

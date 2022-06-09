@@ -35,9 +35,9 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
     taskCreationSubject.pipe(
         buffer(taskCreationSubject.pipe(debounceTime(100))),
         filter(x => x.length > 0),
-        switchMap(val => {
+        switchMap((val: ITaskCreationConfig[]) => {
             let service = injector.get(DialogService);
-            return service.configTaskCreation(val, bpmnJS);
+            return service.configTaskCreation(val, bpmnJS, val[0]?.element);
         })
     )
         .pipe(switchMap(results => concat(...(results.map(result => handleTaskCreationComponentOutput(result).pipe(delay(200)))))))
