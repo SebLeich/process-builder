@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Inject, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
 import { ErrorGatewayEvent } from 'src/lib/process-builder/globals/error-gateway-event';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
@@ -10,8 +11,7 @@ import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/pro
 })
 export class EmbeddedConfigureErrorGatewayEntranceConnectionComponent implements IEmbeddedView<ErrorGatewayEvent>, OnDestroy, OnInit {
 
-  @Input() initialValue: ErrorGatewayEvent | undefined;
-  @Output() valueChange: EventEmitter<ErrorGatewayEvent> = new EventEmitter<ErrorGatewayEvent>();
+  formGroup!: FormGroup;
 
   selection: ErrorGatewayEvent | undefined;
 
@@ -24,14 +24,17 @@ export class EmbeddedConfigureErrorGatewayEntranceConnectionComponent implements
   }
 
   ngOnInit(): void {
-    this.selection = this.initialValue;
+    this.selection = this.entranceGatewayTypeControl.value;
   }
 
   setValue(value: ErrorGatewayEvent) {
-    this.selection = value;
-    this.valueChange.emit(value);
+    this.entranceGatewayTypeControl.setValue(value);
   }
 
   ErrorGatewayEvent = ErrorGatewayEvent;
+
+  get entranceGatewayTypeControl(): FormControl {
+    return this.formGroup.controls['entranceGatewayType'] as FormControl;
+  }
 
 }

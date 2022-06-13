@@ -1,8 +1,30 @@
+import { IConnector } from "src/lib/bpmn-io/i-connector";
 import { IElement } from "src/lib/bpmn-io/i-element";
-import { ITaskCreationConfig } from "src/lib/process-builder/globals/i-task-creation-config";
+import { IParamKeyValue } from "src/lib/process-builder/globals/i-param-key-value";
 
 export interface ITaskCreationComponentInput {
-    steps: ITaskCreationConfig[];
+    data: ITaskCreationDataWrapper;
     bpmnJS: any;
-    element: IElement;
+}
+
+export interface ITaskCreationDataWrapper {
+    data: ITaskCreationData;
+    payload: ITaskCreationPayload;
+}
+
+export interface ITaskCreationData {
+    functionIdentifier: number | null;
+    canFail: boolean | null;
+    implementation: string[] | null;
+    name: string | null;
+    normalizedName: string | null;
+    outputParamName: string | null;
+    normalizedOutputParamName: string | null;
+    outputParamValue: IParamKeyValue[] | null;
+    entranceGatewayType: number | null;
+}
+
+export interface ITaskCreationPayload {
+    configureIncomingErrorGatewaySequenceFlow: IConnector | undefined;
+    configureActivity: IElement | undefined;
 }

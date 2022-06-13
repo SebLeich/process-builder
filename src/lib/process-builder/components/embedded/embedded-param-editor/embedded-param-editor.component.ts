@@ -14,8 +14,6 @@ import { IEmbeddedFunctionImplementationData } from '../embedded-function-implem
 })
 export class EmbeddedParamEditorComponent implements IEmbeddedView<IEmbeddedFunctionImplementationData>, AfterViewInit, OnDestroy, OnInit {
 
-  @Output() valueChange: EventEmitter<IEmbeddedFunctionImplementationData> = new EventEmitter<IEmbeddedFunctionImplementationData>();
-
   @ViewChild('parameterBody', { static: true, read: ElementRef }) parameterBody!: ElementRef<HTMLDivElement>;
 
   initialValue: IEmbeddedFunctionImplementationData | undefined;

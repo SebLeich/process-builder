@@ -98,8 +98,7 @@ export class ProcessBuilderRepository {
 
     }
 
-    static normalizeName(text: string | null | undefined): string | null {
-        if (!text) return null;
+    static normalizeName(text: string = 'unnamedFunction'): string {
         text = text.toLowerCase().replace(/[-_?:*%!;¿\s.]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
         return text.substr(0, 1).toLowerCase() + text.substr(1);
     }

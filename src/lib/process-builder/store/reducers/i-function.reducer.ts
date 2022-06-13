@@ -2,7 +2,7 @@ import { InjectionToken } from '@angular/core';
 import { createEntityAdapter, EntityAdapter, EntityState, Update } from '@ngrx/entity';
 import { createReducer, on, Store } from '@ngrx/store';
 import { IFunction } from '../../globals/i-function';
-import { addIFunction, addIFunctions, removeIFunction, updateIFunction, upsertIFunctions } from '../actions/i-function.actions';
+import { addIFunction, addIFunctions, removeIFunction, updateIFunction, updateIFunctionOutputParam, upsertIFunctions } from '../actions/i-function.actions';
 
 
 export const featureKey = 'Func';
@@ -30,6 +30,7 @@ export const reducer = createReducer(
   initialState,
 
   on(addIFunction, (state: State, { func }) => {
+    debugger;
     return adapter.addOne(func, state);
   }),
 
@@ -37,9 +38,9 @@ export const reducer = createReducer(
     return adapter.addMany(funcs, state);
   }),
 
-  
+
   on(removeIFunction, (state: State, { func }) => {
-    let key = typeof func === 'number'? func: func.identifier;
+    let key = typeof func === 'number' ? func : func.identifier;
     return adapter.removeOne(key, state);
   }),
 
@@ -58,6 +59,14 @@ export const reducer = createReducer(
         'requireCustomImplementation': func.requireCustomImplementation,
         'useDynamicInputParams': func.useDynamicInputParams
       }
+    }
+    return adapter.updateOne(update, state);
+  }),
+
+  on(updateIFunctionOutputParam, (state: State, { identifier, outputParam }) => {
+    let update: Update<IFunction> = {
+      'id': identifier,
+      'changes': { 'output': { 'param': outputParam } }
     }
     return adapter.updateOne(update, state);
   }),

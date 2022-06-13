@@ -8,7 +8,7 @@ export const getElementRegistryModule = (bpmnJS: any) => bpmnJS.get(bpmnJsModule
 export interface IModelingModule {
     appendShape: (origin: IElement, type: { type: string, data?: any }, position: null | { x: number, y: number }) => IElement;
     connect: (origin: IElement, target: IElement) => IConnector;
-    removeElements: (elements: IElement[]) => void;
+    removeElements: (elements: IElement[] | IConnector[]) => void;
     updateLabel: (element: IElement | IConnector, text: string) => void;
     updateProperties: (element: IElement | IConnector, data: any) => void;
 }

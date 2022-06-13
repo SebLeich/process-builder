@@ -40,6 +40,7 @@
     "codemirror": "^5.65.5",
     "eslint4b-prebuilt": "^6.7.2",
     "jsoneditor": "^9.8.0",
+    "material-design-icons": "^3.0.1",
     "rxjs": "~7.5.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.11.4"

@@ -19,6 +19,7 @@ import { linter, lintGutter } from '@codemirror/lint';
 // @ts-ignore
 import Linter from "eslint4b-prebuilt";
 import { INJECTOR_INTERFACE_TOKEN } from 'src/lib/process-builder/globals/injector';
+import defaultImplementation from 'src/lib/process-builder/globals/default-implementation';
 
 @Component({
   selector: 'app-embedded-function-implementation',
@@ -29,8 +30,6 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
 
   @Input() inputParams!: ParamCodes | ParamCodes[] | null;
   @Input() initialValue: IEmbeddedFunctionImplementationData | undefined;
-
-  @Output() valueChange: EventEmitter<IEmbeddedFunctionImplementationData> = new EventEmitter<IEmbeddedFunctionImplementationData>();
 
   @ViewChild('codeBody', { static: true, read: ElementRef }) codeBody!: ElementRef<HTMLDivElement>;
   codeMirror!: EditorView;
@@ -74,9 +73,6 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
 
   ngAfterViewInit(): void {
     this._subscriptions.push(...[
-      this.formGroup.valueChanges.pipe(startWith(this.formGroup.value), debounceTime(500)).subscribe((value) => {
-        this.valueChange.emit(value);
-      }),
       this.implementationChanged$.pipe(debounceTime(500)).subscribe((value) => {
         this.formGroup.controls['implementation'].setValue((value as any)?.text);
       }),
@@ -122,7 +118,7 @@ export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IE
   }
 
   state = () => EditorState.create({
-    doc: Array.isArray(this.formGroup.controls['implementation'].value) ? this.formGroup.controls['implementation'].value.join('\n') : `/**\n * write your custom code in the method\n * use javascript notation\n * all params available via the injector instance\n */\n\n\async (injector) => {\n  // your code\n}\n`,
+    doc: Array.isArray(this.formGroup.controls['implementation'].value) ? this.formGroup.controls['implementation'].value.join('\n') : defaultImplementation,
     extensions: [
       basicSetup,
       autocompletion({ override: [this.complete] }),

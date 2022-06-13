@@ -1,6 +1,6 @@
 import { IFunction } from "src/lib/process-builder/globals/i-function";
 import { PredefinedFunctions } from "src/lib/process-builder/globals/pre-defined-functions";
-import exampleSolution from "./exampleSolution";
+import exampleSolution from "./example-solution";
 import { ParamCodes } from "./param-codes";
 
 export default [

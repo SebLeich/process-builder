@@ -21,8 +21,13 @@ export const removeIFunction = createAction(
 );
 
 export const updateIFunction = createAction(
-  '[IFunction] Update IFunctions',
+  '[IFunction] Update IFunction',
   (func: IFunction) => ({ func })
+);
+
+export const updateIFunctionOutputParam = createAction(
+  '[IFunction] Update IFunction Output Param',
+  (identifier: number, outputParam: number) => ({ identifier, outputParam })
 );
 
 export const upsertIFunctions = createAction(

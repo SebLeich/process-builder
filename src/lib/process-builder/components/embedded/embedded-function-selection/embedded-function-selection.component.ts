@@ -1,5 +1,5 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, QueryList, ViewChildren, ViewContainerRef } from '@angular/core';
-import { delay, map, ReplaySubject, Subscription, takeUntil } from 'rxjs';
+import { Component, Input, OnDestroy, OnInit, QueryList, ViewChildren, ViewContainerRef } from '@angular/core';
+import { delay, map, ReplaySubject, Subscription } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
 import { IFunction } from 'src/lib/process-builder/globals/i-function';
@@ -8,6 +8,7 @@ import * as fromIFunctionState from 'src/lib/process-builder/store/reducers/i-fu
 import { Store } from '@ngrx/store';
 import { selectIFunctions } from 'src/lib/process-builder/store/selectors/i-function.selector';
 import { FunctionPreviewComponent } from '../../function-preview/function-preview.component';
+import { FormControl, FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'app-embedded-function-selection',
@@ -18,16 +19,13 @@ import { FunctionPreviewComponent } from '../../function-preview/function-previe
 export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>, OnDestroy, OnInit {
 
   @Input() inputParams!: ParamCodes | ParamCodes[] | null;
-  @Input() initialValue: number | undefined;
-
-  @Output() valueChange: EventEmitter<number> = new EventEmitter<number>();
 
   @ViewChildren(FunctionPreviewComponent, { read: ViewContainerRef }) private activeFunctionWrappers!: QueryList<ViewContainerRef>;
 
+  formGroup!: FormGroup;
+
   private _availableFunctions = new ReplaySubject<IFunction[]>(1);
   availableFunctions$ = this._availableFunctions.asObservable();
-
-  selection: number | undefined;
 
   private _subscriptions: Subscription[] = [];
 
@@ -36,13 +34,11 @@ export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>
   ) { }
 
   ngOnDestroy(): void {
-    this.valueChange.complete();
     for (let sub of this._subscriptions) sub.unsubscribe();
     this._subscriptions = [];
   }
 
   ngOnInit(): void {
-    this.selection = this.initialValue;
     this._subscriptions.push(...[
       this._store.select(selectIFunctions()).pipe(map(funcs => {
         return funcs.filter(x => {
@@ -50,12 +46,13 @@ export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>
           let requiredInputs: ParamCodes[] = ((Array.isArray(x.inputParams) ? x.inputParams : [x.inputParams]).filter(y => y && !y.optional)).map(x => x?.param) as ParamCodes[];
           if (requiredInputs.length === 0) return true;
           let availableInputParams: ParamCodes[] = Array.isArray(this.inputParams) ? this.inputParams : this.inputParams ? [this.inputParams] : [];
+          return true;
           return !requiredInputs.some(x => availableInputParams.indexOf(x) === -1);
         })
       })).subscribe((availableFunctions) => {
         this._availableFunctions.next(availableFunctions as IFunction[]);
       }),
-      this.availableFunctions$.pipe(delay(800), takeUntil(this.valueChange)).subscribe(() => {
+      this.availableFunctions$.pipe(delay(800)).subscribe(() => {
         let ref = this.activeFunctionWrappers.find(x => (x.element.nativeElement as HTMLDivElement).hasAttribute('active'));
         if(ref) ref.element.nativeElement.scrollIntoView({ behavior: 'smooth' });
       })
@@ -63,8 +60,11 @@ export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>
   }
 
   selectFunction(func: IFunction) {
-    this.selection = func.identifier;
-    this.valueChange.emit(func.identifier);
+    this.functionIdentifierControl.setValue(this.functionIdentifierControl.value === func.identifier? null: func.identifier);
+  }
+
+  get functionIdentifierControl(): FormControl {
+    return this.formGroup.controls['functionIdentifier'] as FormControl;
   }
 
 }

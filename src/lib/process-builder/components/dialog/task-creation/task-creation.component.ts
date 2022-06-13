@@ -1,7 +1,7 @@
 import { Component, Inject, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, debounceTime, filter, interval, map, Observable, of, ReplaySubject, Subject, Subscription, switchMap, take } from 'rxjs';
+import { BehaviorSubject, combineLatest, debounceTime, filter, interval, map, Observable, of, ReplaySubject, shareReplay, Subject, Subscription, switchMap, take } from 'rxjs';
 import { IElement } from 'src/lib/bpmn-io/i-element';
 import { BPMNJsRepository } from 'src/lib/core/bpmn-js-repository';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
@@ -10,8 +10,7 @@ import { TaskCreationStep } from 'src/lib/process-builder/globals/task-creation-
 import { EmbeddedConfigureErrorGatewayEntranceConnectionComponent } from '../../embedded/embedded-configure-error-gateway-entrance-connection/embedded-configure-error-gateway-entrance-connection.component';
 import { EmbeddedFunctionImplementationComponent } from '../../embedded/embedded-function-implementation/embedded-function-implementation.component';
 import { EmbeddedFunctionSelectionComponent } from '../../embedded/embedded-function-selection/embedded-function-selection.component';
-import { ITaskCreationComponentInput } from './i-task-creation-component-input';
-import { ITaskCreationComponentOutput } from './i-task-creation-component-output';
+import { ITaskCreationComponentInput, ITaskCreationDataWrapper } from './i-task-creation-component-input';
 import * as fromIFunction from 'src/lib/process-builder/store/reducers/i-function.reducer';
 import * as fromIParam from 'src/lib/process-builder/store/reducers/i-param.reducer';
 import { selectIFunction } from 'src/lib/process-builder/store/selectors/i-function.selector';
@@ -24,7 +23,7 @@ import { HttpClient } from '@angular/common/http';
 import { EmbeddedParamEditorComponent } from '../../embedded/embedded-param-editor/embedded-param-editor.component';
 import { CodemirrorRepository } from 'src/lib/core/codemirror-repository';
 import { MethodEvaluationStatus } from 'src/lib/process-builder/globals/method-evaluation-status';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
 import { INJECTOR_INTERFACE_TOKEN, INJECTOR_TOKEN } from 'src/lib/process-builder/globals/injector';
 import { InjectorInterfacesProvider, InjectorProvider } from 'src/lib/process-builder/globals/injector-interfaces-provider';
@@ -65,40 +64,55 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
     provideInputParams?: (component: IEmbeddedView<any>, element: IElement) => void,
     autoChangeTabOnValueEmission?: boolean
   }[] = [];
-  values: ITaskCreationComponentOutput[] = [];
 
   private _currentStepIndex: BehaviorSubject<number> = new BehaviorSubject<number>(0);
   currentStepIndex$ = this._currentStepIndex.asObservable();
 
-  private _steps: ReplaySubject<ITaskCreationConfig[]> = new ReplaySubject<ITaskCreationConfig[]>(1);
-  private _hasCustomImplementation = new BehaviorSubject<IElement | null>(null);
+  private _configureGateway = new BehaviorSubject<IElement | null>(null);
+  private _customImplementation = new BehaviorSubject<IElement | null>(null);
   private _hasOutputParam = new BehaviorSubject<boolean>(false);
 
   hasOutputParam$ = this._hasOutputParam.asObservable();
-  steps$ = combineLatest([this._steps.asObservable(), this._hasCustomImplementation.asObservable()])
+  steps$ = combineLatest([this._configureGateway.asObservable(), this._customImplementation.asObservable()])
     .pipe(
-      map(([steps, hasCustomImplementation]: [ITaskCreationConfig[], IElement | null]) => {
-        let availableSteps: ITaskCreationConfig[] = [...steps];
-        if (hasCustomImplementation) {
+      debounceTime(10),
+      map(([gatewayConfig, customImplementation]: [IElement | null, IElement | null]) => {
+        let availableSteps: ITaskCreationConfig[] = [];
+        if (gatewayConfig) {
+          availableSteps.push({
+            'taskCreationStep': TaskCreationStep.ConfigureErrorGatewayEntranceConnection,
+            'element': gatewayConfig
+          } as ITaskCreationConfig);
+        }
+        if (this.data.data.payload.configureActivity) {
+          availableSteps.push({
+            'taskCreationStep': TaskCreationStep.ConfigureFunctionSelection,
+            'element': this.data.data.payload.configureActivity
+          } as ITaskCreationConfig);
+        }
+        if (customImplementation) {
           availableSteps.push(...[
             {
               'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
-              'element': hasCustomImplementation
+              'element': customImplementation
             } as ITaskCreationConfig,
             {
               'taskCreationStep': TaskCreationStep.ConfigureFunctionOutput,
-              'element': hasCustomImplementation,
+              'element': customImplementation,
               'disabled$': this.hasOutputParam$.pipe(map(x => x === true ? false : true))
             } as ITaskCreationConfig
           ]);
         }
         return availableSteps;
-      })
+      }),
+      shareReplay(1)
     ) as Observable<ITaskCreationConfig[]>;
 
   currentStep$ = combineLatest([this.steps$, this.currentStepIndex$]).pipe(map(([steps, index]) => steps[index]));
-
-  canAnalyzeCustomImplementation$ = this.currentStep$.pipe(map(x => x.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation || x.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput));
+  canAnalyzeCustomImplementation$ = this.currentStep$.pipe(
+    filter(x => x ? true : false),
+    map(x => x.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation || x.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput)
+  );
 
   private _statusMessage: Subject<string> = new Subject<string>();
   statusMessage$ = combineLatest([this._statusMessage.asObservable(), this._statusMessage.pipe(switchMap(() => interval(1000)))])
@@ -108,7 +122,6 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
 
   formGroup!: FormGroup;
 
-  private _lastStepSub: Subscription | undefined;
   private _subscriptions: Subscription[] = [];
 
   constructor(
@@ -122,26 +135,22 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
     private _formBuilder: FormBuilder
   ) {
     this.formGroup = this._formBuilder.group({
+      'functionIdentifier': null,
       'canFail': false,
       'implementation': null,
+      'requireCustomImplementation': null,
       'name': config.defaultFunctionName,
       'normalizedName': ProcessBuilderRepository.normalizeName(config.defaultFunctionName),
       'outputParamName': config.dynamicParamDefaultNaming,
       'normalizedOutputParamName': ProcessBuilderRepository.normalizeName(config.dynamicParamDefaultNaming),
       'outputParamValue': this._formBuilder.control(null),
-    })
-    this._steps.next(data.steps);
+      'entranceGatewayType': null
+    });
+    this.formGroup.patchValue(this.data.data.data);
   }
 
-  abort = () => this._ref.close(this.values.map(x => {
-    return { 'config': x.config, 'value': undefined } as ITaskCreationComponentOutput
-  }));
-  finish() {
-    for (let value of this.values.filter(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation || x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput)) {
-      value.value = this.formGroup.value;
-    }
-    this._ref.close(this.values);
-  }
+  abort = () => this._ref.close();
+  finish = () => this._ref.close(this.formGroup.value);
 
   ngOnDestroy(): void {
     for (let sub of this._subscriptions) sub.unsubscribe();
@@ -160,50 +169,54 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
       }
     };
     this.stepRegistry[TaskCreationStep.ConfigureFunctionImplementation] = {
-      type: EmbeddedFunctionImplementationComponent,
-      provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
-        let component = arg as EmbeddedFunctionImplementationComponent;
-        component.inputParams = BPMNJsRepository.getAvailableInputParams(element);
-        component.formGroup = this.formGroup;
-      }
+      type: EmbeddedFunctionImplementationComponent
     };
     this.stepRegistry[TaskCreationStep.ConfigureFunctionOutput] = {
-      type: EmbeddedParamEditorComponent,
-      provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
-        let component = arg as EmbeddedParamEditorComponent;
-        component.formGroup = this.formGroup;
-      }
+      type: EmbeddedParamEditorComponent
     };
-    for (let step of this.data.steps) {
-      let preSelected: number | undefined = step.element?.data ?? undefined;
-      this.values.push({ 'config': step, 'value': preSelected });
-      if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionSelection && preSelected) this.validateFunctionSelection(preSelected, step.element);
-    }
+    this.validateFunctionSelection();
     this.setStep(0);
 
-    let inputParams = BPMNJsRepository.getAvailableInputParams(this.data.element);
-
     this._subscriptions.push(...[
+      this._customImplementation.subscribe((element: IElement | null) => {
+
+      }),
       this.formGroup.controls['implementation'].valueChanges.pipe(debounceTime(2000)).subscribe(() => {
         let value = this.formGroup.controls['implementation'].value;
+        let evaluationResult = CodemirrorRepository.evaluateCustomMethod(undefined, value);
         let inputs = CodemirrorRepository.getUsedInputParams(undefined, value).map(x => x.propertyName).filter((x, index, array) => array.indexOf(x) === index);
+        this._hasOutputParam.next(evaluationResult === MethodEvaluationStatus.ReturnValueFound);
         this._statusMessage.next(`input params: ${inputs.length === 0 ? '-' : inputs.join(', ')}`);
       }),
-      this._paramStore.select(selectIParams(inputParams))
-        .pipe(take(1), filter(x => x ? true : false))
+      this._customImplementation
+        .pipe(
+          filter(x => x ? true : false),
+          switchMap((element: IElement | null) => {
+            let inputParams = BPMNJsRepository.getAvailableInputParams(element as IElement);
+            return this._paramStore.select(selectIParams(inputParams));
+          }),
+          take(1),
+          filter(x => x ? true : false)
+        )
         .subscribe(allParams => {
           for (let param of allParams) {
             (this._injector as any)[param!.normalizedName] = ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(param!.value);
             (this._injectorInterface.injector as any)[param!.normalizedName] = ProcessBuilderRepository.convertIParamKeyValuesToPseudoObject(param!.value);
           }
         }),
+      this.functionIdentifierControl.valueChanges.subscribe((functionIdentifier: number | null) => {
+        if (typeof functionIdentifier !== 'number') return;
+        this.validateFunctionSelection();
+      })
     ]);
+
   }
 
   setStep(index: number) {
     this.steps$.pipe(take(1)).subscribe((steps: ITaskCreationConfig[]) => {
       this.dynamicInner.clear();
       this._currentStepIndex.next(index);
+      if (!steps[index]) return;
       let step = steps[index];
       if (!this.stepRegistry[step.taskCreationStep]) {
         debugger;
@@ -212,39 +225,14 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
       let component = this.dynamicInner.createComponent(this.stepRegistry[step.taskCreationStep].type);
       if (typeof this.stepRegistry[step.taskCreationStep].provideInputParams === 'function') this.stepRegistry[step.taskCreationStep].provideInputParams!(component.instance, step.element);
 
-      component.instance.initialValue = this.values[index].value;
-
-      if (this._lastStepSub) {
-        this._lastStepSub.unsubscribe();
-        this._lastStepSub = undefined;
-      }
-
-      this._lastStepSub = component.instance.valueChange.subscribe((value: any) => {
-
-        this.values.find(x => x.config.taskCreationStep === step.taskCreationStep)!.value = value;
-        let nextIndex = index + 1;
-
-        if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionSelection) this.validateFunctionSelection(value, step.element);
-        if (step.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation) {
-          let evaluationResult = CodemirrorRepository.evaluateCustomMethod(undefined, (value as IEmbeddedFunctionImplementationData).implementation);
-          this._hasOutputParam.next(evaluationResult === MethodEvaluationStatus.ReturnValueFound);
-        }
-
-        if (this.stepRegistry[step.taskCreationStep].autoChangeTabOnValueEmission !== true) return;
-
-        if (this.finished) this.finish();
-        else if (nextIndex < steps.length) {
-          this.setStep(nextIndex);
-        }
-
-      });
+      component.instance.formGroup = this.formGroup;
     });
   }
 
   testImplementation() {
-    let customImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation);
+    let customImplementation = this.formGroup.controls['implementation']?.value;
     if (!customImplementation) return;
-    let result = ProcessBuilderRepository.testMethodAndGetResponse((customImplementation.value as IEmbeddedFunctionImplementationData).implementation, this._injector);
+    let result = ProcessBuilderRepository.testMethodAndGetResponse(customImplementation, this._injector);
     result.subscribe({
       'next': (result: any) => {
         let parsed: string = typeof result === 'object' ? JSON.stringify(result) : typeof result === 'number' ? result.toString() : result;
@@ -254,8 +242,8 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
     });
   }
 
-  validateFunctionSelection(preSelected: number, element: IElement) {
-    this._funcStore.select(selectIFunction(preSelected)).pipe(
+  validateFunctionSelection() {
+    this._funcStore.select(selectIFunction(this.functionIdentifierControl.value)).pipe(
       take(1),
       filter(x => x ? true : false),
       switchMap((fun: IFunction | null | undefined) => combineLatest([of(fun), this._paramStore.select(selectIParam(fun?.output?.param))]))
@@ -263,50 +251,34 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
       this.formGroup.patchValue({
         'canFail': fun?.canFail,
         'implementation': fun?.customImplementation,
+        'requireCustomImplementation': fun?.requireCustomImplementation,
         'name': fun?.name,
         'normalizedName': fun?.normalizedName,
         'normalizedOutputParamName': outputParam?.normalizedName,
         'outputParamName': outputParam?.name,
         'outputParamValue': outputParam?.value
       } as IEmbeddedFunctionImplementationData);
-      let hasCustomImplementation = fun && (fun.requireCustomImplementation === true || fun.customImplementation), existingImplementation = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionImplementation), existingOutputConfig = this.values.find(x => x.config.taskCreationStep === TaskCreationStep.ConfigureFunctionOutput);
-      this._hasCustomImplementation.next(hasCustomImplementation ? element : null);
-      if (hasCustomImplementation && !existingImplementation) {
-        this.values.push(...[{
-          'config': {
-            'taskCreationStep': TaskCreationStep.ConfigureFunctionImplementation,
-            'element': element
-          } as ITaskCreationConfig,
-          'value': null
-        }, {
-          'config': {
-            'taskCreationStep': TaskCreationStep.ConfigureFunctionOutput,
-            'element': element
-          } as ITaskCreationConfig,
-          'value': null
-        }]);
-      }
-      else if (!hasCustomImplementation) {
-        if (existingImplementation) {
-          let index = this.values.indexOf(existingImplementation);
-          if (index > -1) this.values.splice(index, 1);
-        }
-        if (existingOutputConfig) {
-          let index = this.values.indexOf(existingOutputConfig);
-          if (index > -1) this.values.splice(index, 1);
-        }
-      }
+      this._customImplementation.next((this.requireCustomImplementationControl.value || this.implementationControl.value) && this.data.data.payload.configureActivity ? this.data.data.payload.configureActivity : null);
     });
   }
 
   TaskCreationStep = TaskCreationStep;
 
+  get functionIdentifierControl(): FormControl {
+    return this.formGroup.controls['functionIdentifier'] as FormControl;
+  }
+  get implementationControl(): FormControl {
+    return this.formGroup.controls['implementation'] as FormControl;
+  }
+  get requireCustomImplementationControl(): FormControl {
+    return this.formGroup.controls['requireCustomImplementation'] as FormControl;
+  }
+
   get finished() {
     return !this.unfinished;
   }
-
   get unfinished() {
-    return this.values.some(x => typeof x.value === 'undefined');
+    return false;
   }
 
 }

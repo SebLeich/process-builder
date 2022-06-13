@@ -7,7 +7,7 @@ export const selectIFunctionState = createFeatureSelector<fromIFunction.State>(
     fromIFunction.featureKey
 );
 
-export const selectIFunction = (arg: number | undefined | (() => number | undefined)) => createSelector(
+export const selectIFunction = (arg: number | null | undefined | (() => number | null | undefined)) => createSelector(
     selectIFunctionState,
     (state: fromIFunction.State) => {
         if(!state || !state.entities || typeof arg === 'undefined') return null;

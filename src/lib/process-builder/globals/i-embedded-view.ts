@@ -1,7 +1,7 @@
 import { EventEmitter } from "@angular/core";
+import { FormGroup } from "@angular/forms";
 
 export interface IEmbeddedView<T> {
-    initialValue: T | undefined;
-    valueChange: EventEmitter<T>;
+    formGroup: FormGroup;
     ngOnDestroy: () => void;
 }

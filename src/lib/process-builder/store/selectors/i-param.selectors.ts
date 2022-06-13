@@ -27,10 +27,10 @@ export const selectIParams = (codes?: ParamCodes[]) => createSelector(
     }
 );
 
-export const selectIParamsByNormalizedName = (names: string[]) => createSelector(
+export const selectIParamsByNormalizedName = (names: string[] | null | undefined) => createSelector(
     selectIParamState,
     (state: fromIParam.State) => {
-        if (!state || !state.entities) return [];
+        if (!names || !state || !state.entities) return [];
         return Object.values(state.entities).filter(x => x && names.indexOf(x.normalizedName) > -1) as IParam[];
     }
 );
