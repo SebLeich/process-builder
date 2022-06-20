@@ -47,7 +47,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
             return combineLatest([
                 injector.get(DialogService).configTaskCreation({ data: initialValue, payload: inputData }, bpmnJS),
                 of(inputData)
-            ]);
+            ]).pipe(take(1));
         }))
         .subscribe(([data, payload]: [ITaskCreationData, ITaskCreationPayload]) => handleTaskCreationComponentOutput(data, payload));
 
@@ -58,7 +58,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
     let _shapeDeleteExecutedActions: { [key: string]: (evt: IShapeDeleteExecutedEvent) => void } = {};
 
     _connectionCreatePostExecutedActions[shapeTypes.SequenceFlow] = (evt: IConnectionCreatePostExecutedEvent) => {
-        if (evt.context.source.type !== shapeTypes.ExclusiveGateway || evt.context.source.data['gatewayType'] !== 'error_gateway') return;
+        if (evt.context.source.type !== shapeTypes.ExclusiveGateway || !evt.context.source.data || evt.context.source.data['gatewayType'] !== 'error_gateway') return;
         if (!taskCreationSubject) taskCreationSubject = new ReplaySubject<ITaskCreationConfig>(1);
         taskCreationSubject.next({
             taskCreationStep: TaskCreationStep.ConfigureErrorGatewayEntranceConnection,
@@ -147,7 +147,8 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                 take(1),
                 switchMap(([func, paramId, funcId, usedInputParams]: [(IFunction | undefined | null), number, number, IParam[]]) => {
                     return combineLatest([of(func), of(paramId), of(funcId), of(usedInputParams), paramStore.select(fromIParmSelector.selectIParam(func?.output?.param))]);
-                })
+                }),
+                take(1)
             )
             .subscribe(([func, paramId, funcId, usedInputParams, outputParam]: [(IFunction | undefined | null), number, number, IParam[], IParam | 'dynamic' | undefined | null]) => {
 
@@ -205,15 +206,26 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
                     var gatewayShape = payload.configureActivity.outgoing.find(x => x.type === shapeTypes.SequenceFlow && x.target?.data?.gatewayType === 'error_gateway')?.target;
                     if (f.canFail && !gatewayShape) {
-                        let config = injector.get<IProcessBuilderConfig>(PROCESS_BUILDER_CONFIG_TOKEN);
-                        gatewayShape = getModelingModule(bpmnJS).appendShape(payload.configureActivity, {
+
+                        // remove outgoing sequence flows
+                        let outgoingSequenceFlows = payload.configureActivity.outgoing.filter(x => x.type === shapeTypes.SequenceFlow);
+                        let formerConnectedTargets = outgoingSequenceFlows.map(x => x.target);
+                        modelingModule.removeElements(outgoingSequenceFlows);
+
+                        gatewayShape = modelingModule.appendShape(payload.configureActivity, {
                             type: shapeTypes.ExclusiveGateway,
                             data: {
                                 'gatewayType': 'error_gateway'
                             }
                         }, { x: payload.configureActivity.x + 200, y: payload.configureActivity.y + 40 });
-                        getModelingModule(bpmnJS).updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
-                    } else if (gatewayShape) modelingModule.removeElements([gatewayShape]);
+                        modelingModule.updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
+
+                        // reconnect the former connected targets
+                        for (let formerConnectedTarget of formerConnectedTargets) {
+                            modelingModule.connect(gatewayShape, formerConnectedTarget);
+                        }
+
+                    } else if (!f.canFail && gatewayShape) modelingModule.removeElements([gatewayShape]);
 
                     modelingModule.removeElements(payload.configureActivity.incoming.filter(x => x.type === shapeTypes.DataInputAssociation));
                     if (f.inputParams) {

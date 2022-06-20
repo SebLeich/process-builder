@@ -33,13 +33,18 @@ export class ProcessBuilderRepository {
 
             try {
 
-                let defaultValue = value.type === 'array'? []: value.defaultValue;
+                let defaultValue = value.type === 'array' ? [] : { ...value.defaultValue };
                 if (!defaultValue) defaultValue = config[value.type]();
                 if (!defaultValue) defaultValue = this._randomValueGenerator[value.type]();
 
                 Array.isArray(parent) ? parent.push(defaultValue) : parent[value.name] = defaultValue;
                 if (Array.isArray(value.typeDef)) {
-                    this.convertIParamKeyValuesToPseudoObject(value.typeDef, Array.isArray(parent) ? parent[index] : parent[value.name], config);
+                    if (Array.isArray(parent[value.name])) {
+                        this.convertIParamKeyValuesToPseudoObject(value.typeDef, parent[index], config);
+                    } else {
+                        if (Object.isFrozen(parent[value.name])) debugger;
+                        this.convertIParamKeyValuesToPseudoObject(value.typeDef, parent[value.name], config);
+                    }
                 }
 
                 index++;

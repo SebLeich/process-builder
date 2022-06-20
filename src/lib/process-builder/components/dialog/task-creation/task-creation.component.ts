@@ -27,6 +27,7 @@ import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/process-builder/globals/i-process-builder-config';
 import { INJECTOR_INTERFACE_TOKEN, INJECTOR_TOKEN } from 'src/lib/process-builder/globals/injector';
 import { InjectorInterfacesProvider, InjectorProvider } from 'src/lib/process-builder/globals/injector-interfaces-provider';
+import { IConnector } from 'src/lib/bpmn-io/i-connector';
 
 @Component({
   selector: 'app-task-creation',
@@ -68,7 +69,7 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
   private _currentStepIndex: BehaviorSubject<number> = new BehaviorSubject<number>(0);
   currentStepIndex$ = this._currentStepIndex.asObservable();
 
-  private _configureGateway = new BehaviorSubject<IElement | null>(null);
+  private _configureGateway = new BehaviorSubject<IConnector | null>(null);
   private _customImplementation = new BehaviorSubject<IElement | null>(null);
   private _hasOutputParam = new BehaviorSubject<boolean>(false);
 
@@ -76,7 +77,7 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
   steps$ = combineLatest([this._configureGateway.asObservable(), this._customImplementation.asObservable()])
     .pipe(
       debounceTime(10),
-      map(([gatewayConfig, customImplementation]: [IElement | null, IElement | null]) => {
+      map(([gatewayConfig, customImplementation]: [IConnector | null, IElement | null]) => {
         let availableSteps: ITaskCreationConfig[] = [];
         if (gatewayConfig) {
           availableSteps.push({
@@ -174,6 +175,7 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
     this.stepRegistry[TaskCreationStep.ConfigureFunctionOutput] = {
       type: EmbeddedParamEditorComponent
     };
+    this._configureGateway.next(this.data.data.payload.configureIncomingErrorGatewaySequenceFlow ?? null);
     this.validateFunctionSelection();
     this.setStep(0);
 

@@ -44,7 +44,7 @@ export const provideLocalStorageSettings = (injector: Injector) => {
         
         try {
 
-            let params: IParam[] = JSON.parse(paramsSetting);
+            let params: IParam[] = JSON.parse(paramsSetting) as IParam[];
             paramStore.dispatch(upsertIParams(params));
 
         } catch(e){

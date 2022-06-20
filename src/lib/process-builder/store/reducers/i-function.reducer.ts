@@ -30,7 +30,6 @@ export const reducer = createReducer(
   initialState,
 
   on(addIFunction, (state: State, { func }) => {
-    debugger;
     return adapter.addOne(func, state);
   }),
 

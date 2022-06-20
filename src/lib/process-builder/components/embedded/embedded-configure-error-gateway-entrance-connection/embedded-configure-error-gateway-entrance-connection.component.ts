@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Inject, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, Inject, OnDestroy } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { ErrorGatewayEvent } from 'src/lib/process-builder/globals/error-gateway-event';
 import { IEmbeddedView } from 'src/lib/process-builder/globals/i-embedded-view';
@@ -9,11 +9,9 @@ import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/pro
   templateUrl: './embedded-configure-error-gateway-entrance-connection.component.html',
   styleUrls: ['./embedded-configure-error-gateway-entrance-connection.component.sass']
 })
-export class EmbeddedConfigureErrorGatewayEntranceConnectionComponent implements IEmbeddedView<ErrorGatewayEvent>, OnDestroy, OnInit {
+export class EmbeddedConfigureErrorGatewayEntranceConnectionComponent implements IEmbeddedView<ErrorGatewayEvent>, OnDestroy {
 
   formGroup!: FormGroup;
-
-  selection: ErrorGatewayEvent | undefined;
 
   constructor(
     @Inject(PROCESS_BUILDER_CONFIG_TOKEN) public config: IProcessBuilderConfig
@@ -21,10 +19,6 @@ export class EmbeddedConfigureErrorGatewayEntranceConnectionComponent implements
 
   ngOnDestroy(): void {
 
-  }
-
-  ngOnInit(): void {
-    this.selection = this.entranceGatewayTypeControl.value;
   }
 
   setValue(value: ErrorGatewayEvent) {
