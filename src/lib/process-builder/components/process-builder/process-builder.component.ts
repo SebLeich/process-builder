@@ -26,6 +26,7 @@ export class ProcessBuilderComponent implements AfterContentInit, OnDestroy, OnI
   clearState(){
     localStorage.removeItem('params');
     localStorage.removeItem('funcs');
+    localStorage.removeItem('models');
     location.reload();
   }
 

@@ -1,11 +1,14 @@
 import { Inject, Injectable } from "@angular/core";
 import { ParamCodes } from "src/config/param-codes";
 import { getModelingModule } from "../bpmn-io/bpmn-modules";
+import { IBusinessObject } from "../bpmn-io/i-business-object";
 import { IElement } from "../bpmn-io/i-element";
 import shapeTypes from "../bpmn-io/shape-types";
+import { IBpmnJS } from "../process-builder/globals/i-bpmn-js";
 import { IFunction } from "../process-builder/globals/i-function";
 import { IParam } from "../process-builder/globals/i-param";
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from "../process-builder/globals/i-process-builder-config";
+import sebleichProcessBuilderExtension from "../process-builder/globals/sebleich-process-builder-extension";
 
 @Injectable({ providedIn: 'root' })
 export class BPMNJsRepository {
@@ -51,6 +54,27 @@ export class BPMNJsRepository {
         let tasks = anchestors.filter(x => x.type === shapeTypes.Task);
         let outputParams = tasks.flatMap(x => x.outgoing).filter(x => x.type === shapeTypes.DataOutputAssociation).map(x => x.target);
         return outputParams.filter(x => 'outputParam' in x.data) as IElement[];
+    }
+
+    static getExtensionElements(element: IBusinessObject, type: string): undefined | any[] {
+        if (!element.extensionElements || !Array.isArray(element.extensionElements.values)) return undefined;
+        return element.extensionElements.values.filter((x: any) => x.$instanceOf(type))[0];
+    }
+
+    static updateBpmnElementSLPBExtension(bpmnJS: IBpmnJS, businessObject: IBusinessObject, type: 'ActivityExtension' | 'GatewayExtension', setter: (extension: any) => void) {
+        let extensionElements = businessObject.extensionElements;
+        if (!extensionElements) {
+            extensionElements = bpmnJS._moddle.create('bpmn:ExtensionElements');
+            businessObject.extensionElements = extensionElements;
+        }
+
+        let activityExtension = BPMNJsRepository.getExtensionElements(businessObject, `${sebleichProcessBuilderExtension.prefix}:${type}`);
+        if (!activityExtension) {
+            activityExtension = bpmnJS._moddle.create(`${sebleichProcessBuilderExtension.prefix}:${type}`);
+            extensionElements.get('values').push(activityExtension);
+        }
+
+        setter(activityExtension as any);
     }
 
     validateErrorGateway(bpmnJS: any, element: IElement, func: IFunction, gatewayName: string = this._config.errorGatewayConfig.gatewayName) {

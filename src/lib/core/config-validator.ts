@@ -18,6 +18,7 @@ import { IParam } from "../process-builder/globals/i-param";
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from "../process-builder/globals/i-process-builder-config";
 import { ITaskCreationConfig } from "../process-builder/globals/i-task-creation-config";
 import { MethodEvaluationStatus } from "../process-builder/globals/method-evaluation-status";
+import sebleichProcessBuilderExtension from "../process-builder/globals/sebleich-process-builder-extension";
 import { TaskCreationStep } from "../process-builder/globals/task-creation-step";
 import { DialogService } from "../process-builder/services/dialog.service";
 import { addIFunction, updateIFunction } from "../process-builder/store/actions/i-function.actions";
@@ -100,6 +101,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         let removeElements = evt.context.shape.outgoing.filter(x => x.type === shapeTypes.DataOutputAssociation || (x.type === shapeTypes.SequenceFlow && x.target.data?.gatewayType === 'error_gateway'));
         getModelingModule(bpmnJS).removeElements(removeElements.map(x => x.target));
     }
+
 
     bpmnJS.get(bpmnJsModules.EventBus).on(bpmnJsEventTypes.ShapeAdded, (evt: IEvent) => {
         if (typeof _shapeAddedActions[evt.element.type] === 'undefined') return;
@@ -198,8 +200,12 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
                 if (payload.configureActivity) {
 
+                    BPMNJsRepository.updateBpmnElementSLPBExtension(bpmnJS, payload.configureActivity.businessObject, 'ActivityExtension', (e: any) => e.activityFunctionId = f.identifier);
+
                     getModelingModule(bpmnJS).updateLabel(payload.configureActivity, f.name);
+
                     payload.configureActivity.data = f.identifier;
+                    payload.configureActivity.businessObject.data = f.identifier;
 
                     if (outputParam && outputParam !== 'dynamic') BPMNJsRepository.appendOutputParam(bpmnJS, payload.configureActivity!, outputParam);
                     else modelingModule.removeElements(payload.configureActivity.outgoing.filter(x => x.type === shapeTypes.DataOutputAssociation).map(x => x.target));
@@ -218,6 +224,9 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                                 'gatewayType': 'error_gateway'
                             }
                         }, { x: payload.configureActivity.x + 200, y: payload.configureActivity.y + 40 });
+
+                        BPMNJsRepository.updateBpmnElementSLPBExtension(bpmnJS, gatewayShape.businessObject, 'GatewayExtension', (e: any) => e.gatewayType = 'error_gateway');
+
                         modelingModule.updateLabel(gatewayShape, config.errorGatewayConfig.gatewayName);
 
                         // reconnect the former connected targets
@@ -245,6 +254,6 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
     }
 
-    return validationFinishedSubject.asObservable();
+    return validationFinishedSubject.pipe(debounceTime(500));
 
 }

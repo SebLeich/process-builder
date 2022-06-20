@@ -12,6 +12,9 @@ import { IParamEffects } from './store/effects/i-param.effects';
 import * as fromIFunctionState from './store/reducers/i-function.reducer';
 import { IFunctionEffects } from './store/effects/i-function.effects';
 
+import * as fromIBpmnJSModelState from './store/reducers/i-bpmn-js-model.reducer';
+import { IBpmnJSModelEffects } from './store/effects/i-bpmn-js-model.effects';
+
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -77,11 +80,15 @@ import { loadIParams } from './store/actions/i-param.actions';
     StoreModule.forFeature(fromIFunctionState.featureKey, fromIFunctionState.reducer),
     EffectsModule.forFeature([IFunctionEffects]),
 
+    StoreModule.forFeature(fromIBpmnJSModelState.featureKey, fromIBpmnJSModelState.reducer),
+    EffectsModule.forFeature([IBpmnJSModelEffects]),
+
   ],
   providers: [
     ParamPipe,
     { provide: fromIParamState.PARAM_STORE_TOKEN, useExisting: Store },
-    { provide: fromIFunctionState.FUNCTION_STORE_TOKEN, useExisting: Store }
+    { provide: fromIFunctionState.FUNCTION_STORE_TOKEN, useExisting: Store },
+    { provide: fromIBpmnJSModelState.BPMN_JS_MODEL_STORE_TOKEN, useExisting: Store }
   ]
 })
 export class ProcessBuilderModule {
@@ -89,7 +96,8 @@ export class ProcessBuilderModule {
   constructor(
     injector: Injector,
     private _iFunctionStore: Store<fromIFunctionState.State>,
-    private _iParamStore: Store<fromIParamState.State>
+    private _iParamStore: Store<fromIParamState.State>,
+    private _iBpmnJSModelStore: Store<fromIBpmnJSModelState.State>
   ) {
     this._iFunctionStore.dispatch(loadIFunctions());
     this._iParamStore.dispatch(loadIParams());

@@ -18,6 +18,7 @@ export interface IProcessBuilderConfig {
     'statusConfig': IProcessStatusConfig;
     'taskConfig': ITaskConfig[];
     'errorGatewayConfig': IErrorGatewayConfig;
+    'defaultBpmnModelName': string;
 }
 
 export const PROCESS_BUILDER_CONFIG_TOKEN: InjectionToken<IProcessBuilderConfig> = new InjectionToken<IProcessBuilderConfig>("PROCESS_BUILDER_CONFIG");

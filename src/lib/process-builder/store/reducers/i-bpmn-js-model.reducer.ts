@@ -36,7 +36,8 @@ export const reducer = createReducer(
       'created': model.created ?? moment().format('yyyy-MM-ddTHH:mm:ss'),
       'description': model.description,
       'name': model.name,
-      'xml': model.xml
+      'xml': model.xml,
+      'lastModified': model.lastModified
     }, state);
   }),
 
@@ -48,7 +49,8 @@ export const reducer = createReducer(
         'created': model.created ?? moment().format('yyyy-MM-ddTHH:mm:ss'),
         'description': model.description,
         'name': model.name,
-        'xml': model.xml
+        'xml': model.xml,
+        'lastModified': model.lastModified
       });
     }
     return adapter.addMany(output, state);

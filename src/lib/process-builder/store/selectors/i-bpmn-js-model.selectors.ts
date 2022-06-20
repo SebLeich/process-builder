@@ -33,3 +33,10 @@ export const selectIBpmnJSModelsByName = (names: string[] | null | undefined) =>
         return Object.values(state.entities).filter(x => x && typeof x.name === 'string' && names.indexOf(x.name) > -1) as IBpmnJSModel[];
     }
 );
+
+export const selectRecentlyUsedIBpmnJSModel = () => createSelector(
+    selectIBpmnJSModelState,
+    (state: fromIBpmnJSModel.State) => {
+        return Object.values(state.entities).sort((a, b) => (a?.lastModified ?? '') < (b?.lastModified ?? '')? 1: -1)[0];
+    }
+);

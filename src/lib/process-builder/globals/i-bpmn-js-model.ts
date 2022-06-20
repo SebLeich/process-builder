@@ -3,5 +3,6 @@ export interface IBpmnJSModel {
     name: string | null;
     description: string | null;
     created: string | null;
-    xml: string;    
+    xml: string;
+    lastModified: string;
 }

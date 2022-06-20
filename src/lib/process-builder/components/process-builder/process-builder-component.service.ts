@@ -12,26 +12,35 @@ import gridModule from "diagram-js/lib/features/grid-snapping/visuals";
 // @ts-ignore
 import CliModule from 'bpmn-js-cli';
 import { ProcessBuilderService } from '../../services/process-builder.service';
-import { BehaviorSubject, debounceTime, delay, Observable, Subject, Subscription, switchMap, take, timer } from 'rxjs';
+import { BehaviorSubject, combineLatest, delay, distinctUntilChanged, map, Observable, of, Subject, Subscription, switchMap, take, timer } from 'rxjs';
 import { Store } from '@ngrx/store';
 
 import * as fromIParamState from '../../store/reducers/i-param.reducer';
 import * as fromIFuncState from '../../store/reducers/i-function.reducer';
+import * as fromIBpmnJSModelState from '../../store/reducers/i-bpmn-js-model.reducer';
 
 import { selectIParams } from '../../store/selectors/i-param.selectors';
-import { startEventFilter } from 'src/lib/bpmn-io/rxjs-operators';
 import { IEvent } from 'src/lib/bpmn-io/i-event';
 import { validateBPMNConfig } from 'src/lib/core/config-validator';
 import { selectIFunctions } from '../../store/selectors/i-function.selector';
 import { IBpmnJS } from '../../globals/i-bpmn-js';
-import { getElementRegistryModule, getEventBusModule, getModelingModule } from 'src/lib/bpmn-io/bpmn-modules';
-import bpmnJsEventTypes from 'src/lib/bpmn-io/bpmn-js-event-types';
+import { addIBpmnJSModel, upsertIBpmnJSModel } from '../../store/actions/i-bpmn-js-model.actions';
+import * as moment from 'moment';
+import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from '../../globals/i-process-builder-config';
+import { Guid } from '../../globals/guid';
+import { selectIBpmnJSModels, selectRecentlyUsedIBpmnJSModel } from '../../store/selectors/i-bpmn-js-model.selectors';
+import { IBpmnJSModel } from '../../globals/i-bpmn-js-model';
+import sebleichProcessBuilderExtension from '../../globals/sebleich-process-builder-extension';
 
 @Injectable()
 export class ProcessBuilderComponentService {
 
   private _init: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+  /**
+   * @deprecated
+   */
   private _shapeCreated = new Subject<IEvent>();
+  private _currentIBpmnJSModelGuid = new BehaviorSubject<string | null>(null);
 
   // instantiate BpmnJS with component
   public bpmnJS!: IBpmnJS;
@@ -42,15 +51,29 @@ export class ProcessBuilderComponentService {
 
   public params$ = this._paramStore.select(selectIParams());
   public funcs$ = this._funcStore.select(selectIFunctions());
+  public models$ = this._bpmnJSModelStore.select(selectIBpmnJSModels());
   public init$ = this._init.pipe(delay(1));
+
+  /**
+   * @deprecated
+   */
   public shapeCreated$ = this._shapeCreated.asObservable();
+  public currentIBpmnJSModelGuid$ = this._currentIBpmnJSModelGuid.pipe(distinctUntilChanged());
+  public currentIBpmnJSModel$ = combineLatest(
+    [
+      this._bpmnJSModelStore.select(selectIBpmnJSModels()),
+      this.currentIBpmnJSModelGuid$
+    ]
+  ).pipe(map(([bpmnJSModels, bpmnJSModelGuid]: [IBpmnJSModel[], string | null]) => bpmnJSModels.find(x => x.guid === bpmnJSModelGuid)));
 
   private _subscriptions: Subscription[] = [];
 
   constructor(
+    @Inject(PROCESS_BUILDER_CONFIG_TOKEN) private _config: IProcessBuilderConfig,
     private _injector: Injector,
     private _paramStore: Store<fromIParamState.State>,
     private _funcStore: Store<fromIFuncState.State>,
+    private _bpmnJSModelStore: Store<fromIBpmnJSModelState.State>,
     private _processBuilderService: ProcessBuilderService
   ) {
     this._setUp();
@@ -84,17 +107,68 @@ export class ProcessBuilderComponentService {
       });
   }
 
+  saveModel() {
+    this.currentIBpmnJSModel$.pipe(take(1)).subscribe((model: IBpmnJSModel | undefined) => {
+      this.bpmnJS.saveXML()
+        .then(({ xml }) => {
+
+          if (!model) return;
+
+          this._bpmnJSModelStore.dispatch(upsertIBpmnJSModel({
+            'guid': model.guid,
+            'created': model.created,
+            'description': model.description,
+            'name': model.name,
+            'xml': xml,
+            'lastModified': moment().format('yyyy-MM-ddTHH:mm:ss')
+          }));
+
+        });
+    })
+  }
+
   setDefaultModel(): Observable<void> {
     let subject = new Subject<void>();
-    this._processBuilderService.defaultBPMNModel$.pipe(take(1))
+
+    this._bpmnJSModelStore.select(selectRecentlyUsedIBpmnJSModel())
+      .pipe(
+        switchMap((model: IBpmnJSModel | undefined) => model ? of(model) : this._processBuilderService.defaultBPMNModel$),
+        take(1)
+      )
       .subscribe({
-        next: (model) => {
-          this.setXML(model);
+        next: (model: IBpmnJSModel | string) => {
+          if (typeof model === 'string') {
+            model = {
+              'guid': Guid.generateGuid(),
+              'created': moment().format('yyyy-MM-ddTHH:mm:ss'),
+              'description': null,
+              'name': this._config.defaultBpmnModelName,
+              'xml': model,
+              'lastModified': moment().format('yyyy-MM-ddTHH:mm:ss')
+            };
+            this._bpmnJSModelStore.dispatch(addIBpmnJSModel(model));
+          }
+          this._currentIBpmnJSModelGuid.next(model.guid);
           subject.next();
         },
         complete: () => subject.complete()
       });
+
     return subject.asObservable();
+  }
+
+  setNextModel() {
+    combineLatest([
+      this._bpmnJSModelStore.select(selectIBpmnJSModels()),
+      this._currentIBpmnJSModelGuid.asObservable()
+    ]).pipe(
+      take(1)
+    ).subscribe(([models, modelGuid]: [IBpmnJSModel[], string | null]) => {
+      if (models.length < 2 || typeof modelGuid !== 'string') return;
+      let index = models.findIndex(x => x.guid === modelGuid);
+      index = index >= (models.length - 1) ? 0 : index + 1;
+      this._currentIBpmnJSModelGuid.next(models[index].guid);
+    });
   }
 
   setXML(xml: string) {
@@ -110,30 +184,25 @@ export class ProcessBuilderComponentService {
   redo = () => (window as any).cli.redo();
 
   private _setUp() {
+
     this.bpmnJS = new BpmnJS({
       additionalModules: [gridModule, CliModule],
       cli: {
         bindTo: 'cli'
+      },
+      moddleExtensions: {
+        processBuilderExtension: sebleichProcessBuilderExtension
       }
     });
 
-    this._subscriptions.push(
-      validateBPMNConfig(this.bpmnJS, this._injector).pipe(debounceTime(500)).subscribe(() => {
-        this.bpmnJS.saveXML()
-          .then(({ xml }) => {
-            
-          });
-      })
-    );
-
     this._subscriptions.push(...[
-      this._shapeCreated.subscribe(x => {
-        //console.log(x)
+      this.currentIBpmnJSModel$.subscribe((model: IBpmnJSModel | undefined) => {
+        if (!model) return;
+        this.setXML(model.xml);
       }),
-      this._shapeCreated.pipe(startEventFilter).subscribe(e => {
-        //debugger;
-      })
-    ])
+      validateBPMNConfig(this.bpmnJS, this._injector).subscribe()
+    ]);
+
   }
 
 }

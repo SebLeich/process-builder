@@ -14,6 +14,9 @@
 
   <div class="info">
 
+    <div (click)="processBuilderComponentService.setNextModel()">
+      {{(processBuilderComponentService.models$|async)?.length ?? 0}} Models
+    </div>
     <div>
       {{(processBuilderComponentService.params$|async)?.length ?? 0}} Params
     </div>
@@ -23,6 +26,10 @@
 
     <button mat-raised-button color="warn" (click)="clearState()">
       Clear state
+    </button>
+
+    <button mat-raised-button color="primary" (click)="processBuilderComponentService.saveModel()">
+      Save model
     </button>
 
   </div>
