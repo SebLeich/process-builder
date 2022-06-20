@@ -33,7 +33,7 @@ export class ProcessBuilderRepository {
 
             try {
 
-                let defaultValue = value.type === 'array' ? [] : { ...value.defaultValue };
+                let defaultValue = value.type === 'array' ? [] : value.type === 'object'? { ...value.defaultValue }: value.defaultValue;
                 if (!defaultValue) defaultValue = config[value.type]();
                 if (!defaultValue) defaultValue = this._randomValueGenerator[value.type]();
 
@@ -55,6 +55,7 @@ export class ProcessBuilderRepository {
 
         }
 
+        console.log(parent);
         return parent;
 
     }
@@ -104,7 +105,7 @@ export class ProcessBuilderRepository {
     }
 
     static normalizeName(text: string = 'unnamedFunction'): string {
-        text = text.toLowerCase().replace(/[-_?:*%!;¿\s.]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
+        text = text.toLowerCase().replace(/[\(\)-_?:*%!;¿\s.]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
         return text.substr(0, 1).toLowerCase() + text.substr(1);
     }
 

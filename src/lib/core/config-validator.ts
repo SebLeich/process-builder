@@ -32,6 +32,7 @@ import { ProcessBuilderRepository } from "./process-builder-repository";
 
 export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
 
+    let validationFinishedSubject = new Subject<void>();
     let taskCreationSubject = new Subject<ITaskCreationConfig>();
     taskCreationSubject.pipe(
         buffer(taskCreationSubject.pipe(debounceTime(100))),
@@ -99,7 +100,6 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         let removeElements = evt.context.shape.outgoing.filter(x => x.type === shapeTypes.DataOutputAssociation || (x.type === shapeTypes.SequenceFlow && x.target.data?.gatewayType === 'error_gateway'));
         getModelingModule(bpmnJS).removeElements(removeElements.map(x => x.target));
     }
-
 
     bpmnJS.get(bpmnJsModules.EventBus).on(bpmnJsEventTypes.ShapeAdded, (evt: IEvent) => {
         if (typeof _shapeAddedActions[evt.element.type] === 'undefined') return;
@@ -237,10 +237,14 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
                             modelingModule.connect(element, payload.configureActivity);
                         }
                     }
+
+                    validationFinishedSubject.next();
                 }
 
             });
 
     }
+
+    return validationFinishedSubject.asObservable();
 
 }

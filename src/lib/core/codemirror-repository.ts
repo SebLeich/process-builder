@@ -1,6 +1,6 @@
 import { javascript } from "@codemirror/lang-javascript";
 import { syntaxTree } from "@codemirror/language";
-import { EditorState, Text } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import { MethodEvaluationStatus } from "../process-builder/globals/method-evaluation-status";
 import { Tree, SyntaxNode } from 'node_modules/@lezer/common/dist/tree';
 
@@ -119,7 +119,14 @@ export class CodemirrorRepository {
             ...blockNode.getChildren('ObjectExpression')
         ] : [];
         blockNode?.getChildren("ReturnStatement").forEach(statement => {
-            candidates.push(...statement.getChildren('ObjectExpression'), ...statement.getChildren('ArrayExpression'));
+            candidates.push(
+                ...statement.getChildren('MemberExpression'),
+                ...statement.getChildren('ObjectExpression'),
+                ...statement.getChildren('ArrayExpression'),
+                ...statement.getChildren('BinaryExpression'),
+                ...statement.getChildren('ParenthesizedExpression'),
+                ...statement.getChildren('TemplateString')
+            );
         });
         return candidates;
     }
@@ -158,7 +165,13 @@ export class CodemirrorRepository {
 
             case 'ArrayExpression':
             case 'ArgList':
-                return node.getChildren('MemberExpression');
+            case 'BinaryExpression':
+            case 'ParenthesizedExpression':
+            case 'Interpolation':
+                return [...node.getChildren('MemberExpression'), ...node.getChildren('BinaryExpression'), ...node.getChildren('ParenthesizedExpression')];
+
+            case 'TemplateString':
+                return node.getChildren('Interpolation');
         }
         return [];
     }

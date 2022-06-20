@@ -12,7 +12,7 @@ import { updateIParam } from 'src/lib/process-builder/store/actions/i-param.acti
 import * as fromIParam from 'src/lib/process-builder/store/reducers/i-param.reducer';
 import * as fromIFunction from 'src/lib/process-builder/store/reducers/i-function.reducer';
 import { selectIParam } from 'src/lib/process-builder/store/selectors/i-param.selectors';
-import { selectIFunctions, selectIFunctionsByOutputParam } from 'src/lib/process-builder/store/selectors/i-function.selector';
+import { selectIFunctionsByOutputParam } from 'src/lib/process-builder/store/selectors/i-function.selector';
 import { IFunction } from 'src/lib/process-builder/globals/i-function';
 
 @Component({
@@ -52,7 +52,8 @@ export class ParamEditorComponent implements AfterViewInit, OnDestroy, OnInit {
     this.formGroup = this._formBuilder.group({
       'name': null,
       'identifier': null,
-      'value': null
+      'value': null,
+      'normalizedName': null
     });
   }
 
@@ -72,7 +73,9 @@ export class ParamEditorComponent implements AfterViewInit, OnDestroy, OnInit {
     this.editor$.pipe(take(1)).subscribe(editor => {
       let parsedValue = ProcessBuilderRepository.extractObjectIParams(editor.get());
       this.valueControl.setValue(parsedValue);
-      this._paramStore.dispatch(updateIParam(this.formGroup.value))
+      this.normalizedNameControl.setValue(ProcessBuilderRepository.normalizeName(this.nameControl.value));
+      this._paramStore.dispatch(updateIParam(this.formGroup.value));
+      console.log(this.formGroup.value);
       this._ref.close();
     });
   }
@@ -107,6 +110,9 @@ export class ParamEditorComponent implements AfterViewInit, OnDestroy, OnInit {
 
   get nameControl() {
     return this.formGroup.controls['name'];
+  }
+  get normalizedNameControl() {
+    return this.formGroup.controls['normalizedName'];
   }
   get processTypeIdentifierControl() {
     return this.formGroup.controls['processTypeIdentifier'];

@@ -1,9 +1,15 @@
+import { IBpmnJS } from "../process-builder/globals/i-bpmn-js";
 import bpmnJsModules from "./bpmn-js-modules";
 import { IConnector } from "./i-connector";
 import { IElement } from "./i-element";
 
-export const getModelingModule = (bpmnJS: any) => bpmnJS.get(bpmnJsModules.Modeling) as IModelingModule;
-export const getElementRegistryModule = (bpmnJS: any) => bpmnJS.get(bpmnJsModules.ElementRegistry) as IElementRegistry;
+export const getModelingModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.Modeling) as IModelingModule;
+export const getElementRegistryModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.ElementRegistry) as IElementRegistry;
+export const getEventBusModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.EventBus) as IEventBus;
+
+export interface IEventBus {
+    on: (event: any, callback: (evt: any) => any) => void;
+}
 
 export interface IModelingModule {
     appendShape: (origin: IElement, type: { type: string, data?: any }, position: null | { x: number, y: number }) => IElement;

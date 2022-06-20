@@ -12,7 +12,7 @@ import gridModule from "diagram-js/lib/features/grid-snapping/visuals";
 // @ts-ignore
 import CliModule from 'bpmn-js-cli';
 import { ProcessBuilderService } from '../../services/process-builder.service';
-import { BehaviorSubject, delay, Observable, Subject, Subscription, take } from 'rxjs';
+import { BehaviorSubject, debounceTime, delay, Observable, Subject, Subscription, switchMap, take, timer } from 'rxjs';
 import { Store } from '@ngrx/store';
 
 import * as fromIParamState from '../../store/reducers/i-param.reducer';
@@ -23,6 +23,9 @@ import { startEventFilter } from 'src/lib/bpmn-io/rxjs-operators';
 import { IEvent } from 'src/lib/bpmn-io/i-event';
 import { validateBPMNConfig } from 'src/lib/core/config-validator';
 import { selectIFunctions } from '../../store/selectors/i-function.selector';
+import { IBpmnJS } from '../../globals/i-bpmn-js';
+import { getElementRegistryModule, getEventBusModule, getModelingModule } from 'src/lib/bpmn-io/bpmn-modules';
+import bpmnJsEventTypes from 'src/lib/bpmn-io/bpmn-js-event-types';
 
 @Injectable()
 export class ProcessBuilderComponentService {
@@ -31,7 +34,7 @@ export class ProcessBuilderComponentService {
   private _shapeCreated = new Subject<IEvent>();
 
   // instantiate BpmnJS with component
-  public bpmnJS: BpmnJS;
+  public bpmnJS!: IBpmnJS;
   public elementFactory: any;
   public elementRegistry: any;
   public modeling: any;
@@ -97,7 +100,7 @@ export class ProcessBuilderComponentService {
   setXML(xml: string) {
     try {
       const { warnings } = this.bpmnJS.importXML(xml);
-      console.log('rendered');
+      console.log('rendered', warnings);
     } catch (err) {
       console.log('error rendering', err);
     }
@@ -114,7 +117,14 @@ export class ProcessBuilderComponentService {
       }
     });
 
-    validateBPMNConfig(this.bpmnJS, this._injector);
+    this._subscriptions.push(
+      validateBPMNConfig(this.bpmnJS, this._injector).pipe(debounceTime(500)).subscribe(() => {
+        this.bpmnJS.saveXML()
+          .then(({ xml }) => {
+            
+          });
+      })
+    );
 
     this._subscriptions.push(...[
       this._shapeCreated.subscribe(x => {

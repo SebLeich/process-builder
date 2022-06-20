@@ -21,12 +21,12 @@ export const updateIParam = createAction(
 );
 
 export const upsertIParam = createAction(
-  '[IFunction] Upsert IParam',
+  '[IParam] Upsert IParam',
   (param: IParam) => ({ param })
 );
 
 export const upsertIParams = createAction(
-  '[IFunction] Upsert IParams',
+  '[IParam] Upsert IParams',
   (params: IParam[]) => ({ params })
 );
 

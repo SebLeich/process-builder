@@ -10,13 +10,13 @@ import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from "../process-
 @Injectable({ providedIn: 'root' })
 export class BPMNJsRepository {
 
-    constructor(@Inject(PROCESS_BUILDER_CONFIG_TOKEN) private _config: IProcessBuilderConfig){
+    constructor(@Inject(PROCESS_BUILDER_CONFIG_TOKEN) private _config: IProcessBuilderConfig) {
 
     }
 
     static appendOutputParam(bpmnJS: any, element: IElement, param: IParam | null | undefined, preventDublet: boolean = true): null | IElement {
         if (!param) return null;
-        let e = element.outgoing.find(x => x.type === shapeTypes.DataOutputAssociation && x.target.data.outputParam === param.identifier)?.target;
+        let e = element.outgoing.find(x => x.type === shapeTypes.DataOutputAssociation)?.target;
         if (!preventDublet || !e) {
             e = getModelingModule(bpmnJS).appendShape(element, {
                 type: shapeTypes.DataObjectReference,
@@ -24,7 +24,7 @@ export class BPMNJsRepository {
                     'outputParam': param.identifier
                 }
             }, { x: element.x + 50, y: element.y - 60 });
-        }
+        } else if (e) e.data.outputParam = param.identifier;
         getModelingModule(bpmnJS).updateLabel(e, param.name);
         return e;
     }
