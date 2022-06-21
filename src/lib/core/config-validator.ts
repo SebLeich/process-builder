@@ -101,7 +101,7 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         let removeElements = evt.context.shape.outgoing.filter(x => x.type === shapeTypes.DataOutputAssociation || (x.type === shapeTypes.SequenceFlow && x.target.data?.gatewayType === 'error_gateway'));
         getModelingModule(bpmnJS).removeElements(removeElements.map(x => x.target));
     }
-
+    
 
     bpmnJS.get(bpmnJsModules.EventBus).on(bpmnJsEventTypes.ShapeAdded, (evt: IEvent) => {
         if (typeof _shapeAddedActions[evt.element.type] === 'undefined') return;

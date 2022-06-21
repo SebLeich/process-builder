@@ -31,6 +31,9 @@ import { Guid } from '../../globals/guid';
 import { selectIBpmnJSModels, selectRecentlyUsedIBpmnJSModel } from '../../store/selectors/i-bpmn-js-model.selectors';
 import { IBpmnJSModel } from '../../globals/i-bpmn-js-model';
 import sebleichProcessBuilderExtension from '../../globals/sebleich-process-builder-extension';
+import { getCanvasModule } from 'src/lib/bpmn-io/bpmn-modules';
+import { IViewbox } from 'src/lib/bpmn-io/i-viewbox';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Injectable()
 export class ProcessBuilderComponentService {
@@ -70,6 +73,7 @@ export class ProcessBuilderComponentService {
 
   constructor(
     @Inject(PROCESS_BUILDER_CONFIG_TOKEN) private _config: IProcessBuilderConfig,
+    private _snackBar: MatSnackBar,
     private _injector: Injector,
     private _paramStore: Store<fromIParamState.State>,
     private _funcStore: Store<fromIFuncState.State>,
@@ -120,8 +124,13 @@ export class ProcessBuilderComponentService {
             'description': model.description,
             'name': model.name,
             'xml': xml,
-            'lastModified': moment().format('yyyy-MM-ddTHH:mm:ss')
+            'lastModified': moment().format('yyyy-MM-ddTHH:mm:ss'),
+            'viewbox': getCanvasModule(this.bpmnJS).viewbox()
           }));
+
+          this._snackBar.open(`the state was successfully saved`, 'Ok', {
+            duration: 2000
+          });
 
         });
     })
@@ -171,13 +180,16 @@ export class ProcessBuilderComponentService {
     });
   }
 
-  setXML(xml: string) {
-    try {
-      const { warnings } = this.bpmnJS.importXML(xml);
-      console.log('rendered', warnings);
-    } catch (err) {
-      console.log('error rendering', err);
-    }
+  setBpmnModel(xml: string, viewbox: IViewbox | null = null) {
+    this.bpmnJS.importXML(xml)
+      .then(() => {
+        if (viewbox) {
+          getCanvasModule(this.bpmnJS).viewbox(viewbox);
+        } else {
+          getCanvasModule(this.bpmnJS).zoom('fit-viewport', 'auto');
+        }
+      })
+      .catch((err) => console.log('error rendering', err));
   }
 
   undo = () => (window as any).cli.undo();
@@ -198,7 +210,7 @@ export class ProcessBuilderComponentService {
     this._subscriptions.push(...[
       this.currentIBpmnJSModel$.subscribe((model: IBpmnJSModel | undefined) => {
         if (!model) return;
-        this.setXML(model.xml);
+        this.setBpmnModel(model.xml, model.viewbox);
       }),
       validateBPMNConfig(this.bpmnJS, this._injector).subscribe()
     ]);

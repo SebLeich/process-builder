@@ -3,6 +3,6 @@ export interface IBpmnJS {
     attachTo: (el: HTMLDivElement) => void;
     get: (module: string) => any;
     getDefinitions: () => any;
-    importXML: (xml: string) => { warnings: string[] };
+    importXML: (xml: string) => Promise<{ warnings: string[] }>;
     saveXML: () => Promise<{ xml: string }>;
 }

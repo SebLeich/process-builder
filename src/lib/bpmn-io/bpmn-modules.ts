@@ -2,10 +2,17 @@ import { IBpmnJS } from "../process-builder/globals/i-bpmn-js";
 import bpmnJsModules from "./bpmn-js-modules";
 import { IConnector } from "./i-connector";
 import { IElement } from "./i-element";
+import { IViewbox } from "./i-viewbox";
 
+export const getCanvasModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.Canvas) as ICanvasModule;
 export const getModelingModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.Modeling) as IModelingModule;
 export const getElementRegistryModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.ElementRegistry) as IElementRegistry;
 export const getEventBusModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.EventBus) as IEventBus;
+
+export interface ICanvasModule {
+    viewbox: (viewbox?: IViewbox) => IViewbox;
+    zoom(viewbox: 'fit-viewport', focus?: 'auto'): void;
+}
 
 export interface IEventBus {
     on: (event: any, callback: (evt: any) => any) => void;
