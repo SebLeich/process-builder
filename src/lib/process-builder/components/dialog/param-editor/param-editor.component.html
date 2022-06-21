@@ -23,7 +23,7 @@
 
         </div>
 
-        <mat-tab-group mat-align-tabs="start">
+        <mat-tab-group mat-align-tabs="start" [(selectedIndex)]="selectedIndex">
 
             <mat-tab label="design">
 
@@ -31,7 +31,7 @@
 
             </mat-tab>
 
-            <mat-tab label="import from flow">
+            <mat-tab label="import from flow" *ngIf="computable$|async">
 
                 <div class="hint">
                     Dynamically calculate the parameter's data structure as a result of your modeled flow.

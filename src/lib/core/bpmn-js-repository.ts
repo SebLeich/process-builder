@@ -22,12 +22,16 @@ export class BPMNJsRepository {
         let e = element.outgoing.find(x => x.type === shapeTypes.DataOutputAssociation)?.target;
         if (!preventDublet || !e) {
             e = getModelingModule(bpmnJS).appendShape(element, {
-                type: shapeTypes.DataObjectReference,
-                data: {
-                    'outputParam': param.identifier
-                }
+                type: shapeTypes.DataObjectReference
             }, { x: element.x + 50, y: element.y - 60 });
-        } else if (e) e.data.outputParam = param.identifier;
+            BPMNJsRepository.updateBpmnElementSLPBExtension(bpmnJS, e.businessObject, 'DataObjectExtension', (ext) => {
+                ext.outputParam = param.identifier;
+            });
+        } else if (e) {
+            BPMNJsRepository.updateBpmnElementSLPBExtension(bpmnJS, e.businessObject, 'DataObjectExtension', (ext) => {
+                ext.outputParam = param.identifier;
+            });
+        };
         getModelingModule(bpmnJS).updateLabel(e, param.name);
         return e;
     }
@@ -45,7 +49,7 @@ export class BPMNJsRepository {
     }
 
     static getAvailableInputParams(element: IElement) {
-        return this.getAvailableInputParamsIElements(element).map(x => x.data.outputParam) as ParamCodes[];
+        return this.getAvailableInputParamsIElements(element).map(x => BPMNJsRepository.getSLPBExtension(x.businessObject, 'DataObjectExtension', (ext) => ext.outputParam)) as ParamCodes[];
     }
 
     static getAvailableInputParamsIElements(element: IElement) {
@@ -53,7 +57,7 @@ export class BPMNJsRepository {
         this.fillAnchestors(element, anchestors);
         let tasks = anchestors.filter(x => x.type === shapeTypes.Task);
         let outputParams = tasks.flatMap(x => x.outgoing).filter(x => x.type === shapeTypes.DataOutputAssociation).map(x => x.target);
-        return outputParams.filter(x => 'outputParam' in x.data) as IElement[];
+        return outputParams.filter(x => BPMNJsRepository.sLPBExtensionSetted(x.businessObject, 'DataObjectExtension', (ext) => 'outputParam' in ext)) as IElement[];
     }
 
     static getExtensionElements(element: IBusinessObject, type: string): undefined | any[] {
@@ -61,7 +65,19 @@ export class BPMNJsRepository {
         return element.extensionElements.values.filter((x: any) => x.$instanceOf(type))[0];
     }
 
-    static updateBpmnElementSLPBExtension(bpmnJS: IBpmnJS, businessObject: IBusinessObject, type: 'ActivityExtension' | 'GatewayExtension', setter: (extension: any) => void) {
+    static getSLPBExtension<T>(businessObject: IBusinessObject | undefined, type: 'ActivityExtension' | 'GatewayExtension' | 'DataObjectExtension', provider: (extensions: any) => T) {
+        if (!businessObject) return undefined;
+        let extension = BPMNJsRepository.getExtensionElements(businessObject, `${sebleichProcessBuilderExtension.prefix}:${type}`);
+        return extension ? provider(extension) : undefined;
+    }
+
+    static sLPBExtensionSetted(businessObject: IBusinessObject | undefined, type: 'ActivityExtension' | 'GatewayExtension' | 'DataObjectExtension', condition: (extensions: any) => boolean) {
+        if (!businessObject) return false;
+        let extension = BPMNJsRepository.getExtensionElements(businessObject, `${sebleichProcessBuilderExtension.prefix}:${type}`);
+        return extension ? condition(extension) : false;
+    }
+
+    static updateBpmnElementSLPBExtension(bpmnJS: IBpmnJS, businessObject: IBusinessObject, type: 'ActivityExtension' | 'GatewayExtension' | 'DataObjectExtension', setter: (extension: any) => void) {
         let extensionElements = businessObject.extensionElements;
         if (!extensionElements) {
             extensionElements = bpmnJS._moddle.create('bpmn:ExtensionElements');
@@ -78,7 +94,7 @@ export class BPMNJsRepository {
     }
 
     validateErrorGateway(bpmnJS: any, element: IElement, func: IFunction, gatewayName: string = this._config.errorGatewayConfig.gatewayName) {
-        var gatewayShape: IElement | undefined = element.outgoing.find(x => x.type === shapeTypes.SequenceFlow && x.target?.data?.gatewayType === 'error_gateway')?.target, modelingModule = getModelingModule(bpmnJS);
+        var gatewayShape: IElement | undefined = element.outgoing.find(x => x.type === shapeTypes.SequenceFlow && BPMNJsRepository.sLPBExtensionSetted(x.businessObject, 'GatewayExtension', (ext) => ext.gatewayType === 'error_gateway'))?.target, modelingModule = getModelingModule(bpmnJS);
         if (func.canFail && !gatewayShape) {
             gatewayShape = modelingModule.appendShape(element, {
                 type: shapeTypes.ExclusiveGateway,

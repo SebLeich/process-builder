@@ -12,7 +12,7 @@ import gridModule from "diagram-js/lib/features/grid-snapping/visuals";
 // @ts-ignore
 import CliModule from 'bpmn-js-cli';
 import { ProcessBuilderService } from '../../services/process-builder.service';
-import { BehaviorSubject, combineLatest, delay, distinctUntilChanged, map, Observable, of, Subject, Subscription, switchMap, take, timer } from 'rxjs';
+import { BehaviorSubject, combineLatest, debounceTime, delay, distinctUntilChanged, map, Observable, of, Subject, Subscription, switchMap, take, timer } from 'rxjs';
 import { Store } from '@ngrx/store';
 
 import * as fromIParamState from '../../store/reducers/i-param.reducer';
@@ -24,7 +24,7 @@ import { IEvent } from 'src/lib/bpmn-io/i-event';
 import { validateBPMNConfig } from 'src/lib/core/config-validator';
 import { selectIFunctions } from '../../store/selectors/i-function.selector';
 import { IBpmnJS } from '../../globals/i-bpmn-js';
-import { addIBpmnJSModel, upsertIBpmnJSModel } from '../../store/actions/i-bpmn-js-model.actions';
+import { addIBpmnJSModel, removeIBpmnJSModel, upsertIBpmnJSModel } from '../../store/actions/i-bpmn-js-model.actions';
 import * as moment from 'moment';
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from '../../globals/i-process-builder-config';
 import { Guid } from '../../globals/guid';
@@ -67,7 +67,10 @@ export class ProcessBuilderComponentService {
       this._bpmnJSModelStore.select(selectIBpmnJSModels()),
       this.currentIBpmnJSModelGuid$
     ]
-  ).pipe(map(([bpmnJSModels, bpmnJSModelGuid]: [IBpmnJSModel[], string | null]) => bpmnJSModels.find(x => x.guid === bpmnJSModelGuid)));
+  ).pipe(
+    debounceTime(10),
+    map(([bpmnJSModels, bpmnJSModelGuid]: [IBpmnJSModel[], string | null]) => bpmnJSModels.find(x => x.guid === bpmnJSModelGuid))
+  );
 
   private _subscriptions: Subscription[] = [];
 
@@ -122,6 +125,15 @@ export class ProcessBuilderComponentService {
 
           this._init.next(true);
         }
+      });
+  }
+
+  removeModel() {
+    this._currentIBpmnJSModelGuid.pipe(take(1))
+      .subscribe((bpmnJSModelGuid: string | null) => {
+        if (typeof bpmnJSModelGuid !== 'string') return;
+        this._bpmnJSModelStore.dispatch(removeIBpmnJSModel(bpmnJSModelGuid));
+        this.setNextModel();
       });
   }
 
@@ -197,11 +209,7 @@ export class ProcessBuilderComponentService {
   setBpmnModel(xml: string, viewbox: IViewbox | null = null) {
     this.bpmnJS.importXML(xml)
       .then(() => {
-        if (viewbox) {
-          getCanvasModule(this.bpmnJS).viewbox(viewbox);
-        } else {
-          getCanvasModule(this.bpmnJS).zoom('fit-viewport', 'auto');
-        }
+        if (viewbox) getCanvasModule(this.bpmnJS).viewbox(viewbox);
       })
       .catch((err) => console.log('error rendering', err));
   }

@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Observable } from 'rxjs';
 import { ParamCodes } from 'src/config/param-codes';
+import { IElement } from 'src/lib/bpmn-io/i-element';
 import { ParamEditorComponent } from '../components/dialog/param-editor/param-editor.component';
 import { ITaskCreationComponentInput, ITaskCreationData, ITaskCreationDataWrapper, ITaskCreationPayload } from '../components/dialog/task-creation/i-task-creation-component-input';
 import { TaskCreationComponent } from '../components/dialog/task-creation/task-creation.component';
@@ -29,9 +30,9 @@ export class DialogService {
     return ref.afterClosed();
   }
 
-  editParam(paramCode: ParamCodes): Observable<Object> {
+  editParam(paramCode: ParamCodes, element: IElement): Observable<Object> {
     let ref = this._dialog.open(ParamEditorComponent, {
-      data: paramCode,
+      data: { paramCode: paramCode, element: element },
       panelClass: 'no-padding-dialog',
       disableClose: true
     });

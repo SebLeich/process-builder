@@ -60,6 +60,7 @@ export default [
             { 'name': '_Algorithm', 'type': 'string', 'defaultValue': 'ABC' },
         ],
         'name': 'exemplary solution',
-        'normalizedName': 'exemplarySolution'
+        'normalizedName': 'exemplarySolution',
+        'constant': true
     } as IParam,
 ];

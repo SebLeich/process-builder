@@ -55,7 +55,6 @@ export class ProcessBuilderRepository {
 
         }
 
-        console.log(parent);
         return parent;
 
     }

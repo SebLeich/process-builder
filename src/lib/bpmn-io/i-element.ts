@@ -3,10 +3,6 @@ import { IConnector } from "./i-connector";
 
 export interface IElement {
     children: [];
-    /**
-     * @deprecated
-     */
-    data?: any;
     di: any;
     height: number;
     id: string;

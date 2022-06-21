@@ -87,5 +87,24 @@ export default [
             return exampleSolution;
         },
         'canFail': false
+    } as IFunction,
+    {
+        'identifier': 7,
+        'inputParams': [],
+        'name': 'Download JSON',
+        'normalizedName': 'downloadJSON',
+        'description': 'method downloads object as json',
+        'output': null,
+        'pseudoImplementation': (arg: object) => {
+            let sJson = JSON.stringify(arg), element = document.createElement('a');
+            element.setAttribute('href', "data:text/json;charset=UTF-8," + encodeURIComponent(sJson));
+            element.setAttribute('download', "primer-server-task.json");
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        },
+        'canFail': false,
+        'requireCustomImplementation': false
     } as IFunction
 ];

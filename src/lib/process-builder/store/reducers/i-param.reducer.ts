@@ -31,10 +31,11 @@ export const reducer = createReducer(
 
   on(addIParam, (state: State, { param }) => {
     return adapter.addOne({
-      'identifier': typeof param.identifier === 'number'? param.identifier: nextId(state),
-      'value': param.value,
-      'name': param.name,
-      'normalizedName': param.normalizedName
+      identifier: typeof param.identifier === 'number'? param.identifier: nextId(state),
+      value: param.value,
+      name: param.name,
+      normalizedName: param.normalizedName,
+      constant: param.constant
     }, state);
   }),
 
@@ -42,10 +43,11 @@ export const reducer = createReducer(
     let output: IParam[] = [];
     for (let param of params) {
       output.push({
-        'identifier': typeof param.identifier === 'number'? param.identifier: nextId(state),
-        'value': param.value,
-        'name': param.name,
-        'normalizedName': param.normalizedName
+        identifier: typeof param.identifier === 'number'? param.identifier: nextId(state),
+        value: param.value,
+        name: param.name,
+        normalizedName: param.normalizedName,
+        constant: param.constant
       });
     }
     return adapter.addMany(output, state);

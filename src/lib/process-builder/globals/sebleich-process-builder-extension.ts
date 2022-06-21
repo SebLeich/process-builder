@@ -8,20 +8,32 @@ export default {
     "types": [
         {
             "name": "ActivityExtension",
+            "superClass": [ "Element" ],
             "properties": [
                 {
-                    "name": "functionId",
+                    "name": "activityFunctionId",
                     "isAttr": true,
                     "type": "Integer"
                 }
             ]
         }, {
             "name": "GatewayExtension",
+            "superClass": [ "Element" ],
             "properties": [
                 {
                     "name": "gatewayType",
                     "isAttr": true,
                     "type": "String"
+                }
+            ]
+        }, {
+            "name": "DataObjectExtension",
+            "superClass": [ "Element" ],
+            "properties": [
+                {
+                    "name": "outputParam",
+                    "isAttr": true,
+                    "type": "Integer"
                 }
             ]
         }
