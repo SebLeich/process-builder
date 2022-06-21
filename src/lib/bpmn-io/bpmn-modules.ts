@@ -8,10 +8,19 @@ export const getCanvasModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.Can
 export const getModelingModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.Modeling) as IModelingModule;
 export const getElementRegistryModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.ElementRegistry) as IElementRegistry;
 export const getEventBusModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.EventBus) as IEventBus;
+export const getTooltipModule = (bpmnJS: IBpmnJS) => bpmnJS.get(bpmnJsModules.Tooltip) as ITooltipModule;
 
 export interface ICanvasModule {
     viewbox: (viewbox?: IViewbox) => IViewbox;
     zoom(viewbox: 'fit-viewport', focus?: 'auto'): void;
+}
+
+export interface ITooltipModule {
+    add: (data: { position: { x: number, y: number }, html: string }) => void;
+    hide: () => void;
+    remove: (data: any) => void;
+    show: () => void;
+    _tooltips: { [key: string]: object };
 }
 
 export interface IEventBus {

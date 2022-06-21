@@ -26,10 +26,9 @@ import defaultImplementation from 'src/lib/process-builder/globals/default-imple
   templateUrl: './embedded-function-implementation.component.html',
   styleUrls: ['./embedded-function-implementation.component.sass']
 })
-export class EmbeddedFunctionImplementationComponent implements IEmbeddedView<IEmbeddedFunctionImplementationData>, AfterViewInit, OnDestroy {
+export class EmbeddedFunctionImplementationComponent implements IEmbeddedView, AfterViewInit, OnDestroy {
 
   @Input() inputParams!: ParamCodes | ParamCodes[] | null;
-  @Input() initialValue: IEmbeddedFunctionImplementationData | undefined;
 
   @ViewChild('codeBody', { static: true, read: ElementRef }) codeBody!: ElementRef<HTMLDivElement>;
   codeMirror!: EditorView;

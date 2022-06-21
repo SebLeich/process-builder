@@ -24,7 +24,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { FunctionPreviewComponent } from './components/function-preview/function-preview.component';
+import { FunctionPreviewComponent } from './components/previews/function-preview/function-preview.component';
 import { ParamPipe } from './pipes/param.pipe';
 import { ParamEditorComponent } from './components/dialog/param-editor/param-editor.component';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -40,6 +40,9 @@ import { loadIFunctions } from './store/actions/i-function.actions';
 import { EmbeddedParamEditorComponent } from './components/embedded/embedded-param-editor/embedded-param-editor.component';
 import { localStorageAdapter, provideLocalStorageSettings } from './adapters/local-storage-adapter';
 import { loadIParams } from './store/actions/i-param.actions';
+import { ValidationErrorPipe } from './pipes/validation-error.pipe';
+import { EmbeddedFunctionInputSelectionComponent } from './components/embedded/embedded-function-input-selection/embedded-function-input-selection.component';
+import { ParamPreviewComponent } from './components/previews/param-preview/param-preview.component';
 
 
 @NgModule({
@@ -55,7 +58,10 @@ import { loadIParams } from './store/actions/i-param.actions';
     DynamicInputParamsPipe,
     EmbeddedFunctionImplementationComponent,
     ReturnValueStatusPipe,
-    EmbeddedParamEditorComponent
+    EmbeddedParamEditorComponent,
+    ValidationErrorPipe,
+    EmbeddedFunctionInputSelectionComponent,
+    ParamPreviewComponent
   ],
   imports: [
     CodemirrorModule,

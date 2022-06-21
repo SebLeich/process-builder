@@ -12,11 +12,9 @@ import { IEmbeddedFunctionImplementationData } from '../embedded-function-implem
   templateUrl: './embedded-param-editor.component.html',
   styleUrls: ['./embedded-param-editor.component.sass']
 })
-export class EmbeddedParamEditorComponent implements IEmbeddedView<IEmbeddedFunctionImplementationData>, AfterViewInit, OnDestroy, OnInit {
+export class EmbeddedParamEditorComponent implements IEmbeddedView, AfterViewInit, OnDestroy, OnInit {
 
   @ViewChild('parameterBody', { static: true, read: ElementRef }) parameterBody!: ElementRef<HTMLDivElement>;
-
-  initialValue: IEmbeddedFunctionImplementationData | undefined;
 
   formGroup!: FormGroup;
 

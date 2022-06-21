@@ -28,6 +28,7 @@ import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/pro
 import { INJECTOR_INTERFACE_TOKEN, INJECTOR_TOKEN } from 'src/lib/process-builder/globals/injector';
 import { InjectorInterfacesProvider, InjectorProvider } from 'src/lib/process-builder/globals/injector-interfaces-provider';
 import { IConnector } from 'src/lib/bpmn-io/i-connector';
+import { EmbeddedFunctionInputSelectionComponent } from '../../embedded/embedded-function-input-selection/embedded-function-input-selection.component';
 
 @Component({
   selector: 'app-task-creation',
@@ -61,8 +62,8 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
   @ViewChild('dynamicInner', { static: true, read: ViewContainerRef }) dynamicInner!: ViewContainerRef;
 
   stepRegistry: {
-    type: Type<IEmbeddedView<any>>,
-    provideInputParams?: (component: IEmbeddedView<any>, element: IElement) => void,
+    type: Type<IEmbeddedView>,
+    provideInputParams?: (component: IEmbeddedView, element: IElement) => void,
     autoChangeTabOnValueEmission?: boolean
   }[] = [];
 
@@ -72,12 +73,13 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
   private _configureGateway = new BehaviorSubject<IConnector | null>(null);
   private _customImplementation = new BehaviorSubject<IElement | null>(null);
   private _hasOutputParam = new BehaviorSubject<boolean>(false);
+  private _hasDynamicInputParam = new BehaviorSubject<IElement | null>(null);
 
   hasOutputParam$ = this._hasOutputParam.asObservable();
-  steps$ = combineLatest([this._configureGateway.asObservable(), this._customImplementation.asObservable()])
+  steps$ = combineLatest([this._configureGateway.asObservable(), this._customImplementation.asObservable(), this._hasDynamicInputParam.asObservable()])
     .pipe(
       debounceTime(10),
-      map(([gatewayConfig, customImplementation]: [IConnector | null, IElement | null]) => {
+      map(([gatewayConfig, customImplementation, hasDynamicInputParam]: [IConnector | null, IElement | null, IElement | null]) => {
         let availableSteps: ITaskCreationConfig[] = [];
         if (gatewayConfig) {
           availableSteps.push({
@@ -89,6 +91,12 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
           availableSteps.push({
             'taskCreationStep': TaskCreationStep.ConfigureFunctionSelection,
             'element': this.data.data.payload.configureActivity
+          } as ITaskCreationConfig);
+        }
+        if(hasDynamicInputParam){
+          availableSteps.push({
+            'taskCreationStep': TaskCreationStep.ConfigureFunctionInput,
+            'element': hasDynamicInputParam
           } as ITaskCreationConfig);
         }
         if (customImplementation) {
@@ -164,7 +172,7 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
     };
     this.stepRegistry[TaskCreationStep.ConfigureFunctionSelection] = {
       type: EmbeddedFunctionSelectionComponent,
-      provideInputParams: (arg: IEmbeddedView<any>, element: IElement) => {
+      provideInputParams: (arg: IEmbeddedView, element: IElement) => {
         let component = arg as EmbeddedFunctionSelectionComponent;
         component.inputParams = BPMNJsRepository.getAvailableInputParams(element);
       }
@@ -174,6 +182,14 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
     };
     this.stepRegistry[TaskCreationStep.ConfigureFunctionOutput] = {
       type: EmbeddedParamEditorComponent
+    };
+    this.stepRegistry[TaskCreationStep.ConfigureFunctionInput] = {
+      type: EmbeddedFunctionInputSelectionComponent,
+      provideInputParams: (arg: IEmbeddedView, element: IElement) => {
+        let component = arg as EmbeddedFunctionInputSelectionComponent;
+        let availableInputParams = BPMNJsRepository.getAvailableInputParams(element);
+        component.setInputParams(availableInputParams);
+      }
     };
     this._configureGateway.next(this.data.data.payload.configureIncomingErrorGatewaySequenceFlow ?? null);
     this.validateFunctionSelection();
@@ -260,7 +276,9 @@ export class TaskCreationComponent implements OnDestroy, OnInit {
         'outputParamName': outputParam?.name,
         'outputParamValue': outputParam?.value
       } as IEmbeddedFunctionImplementationData);
-      this._customImplementation.next((this.requireCustomImplementationControl.value || this.implementationControl.value) && this.data.data.payload.configureActivity ? this.data.data.payload.configureActivity : null);
+      let hasCustomImplementation = (this.requireCustomImplementationControl.value || this.implementationControl.value) && this.data.data.payload.configureActivity? true: false;
+      this._customImplementation.next(hasCustomImplementation? this.data.data.payload.configureActivity ?? null: null);
+      this._hasDynamicInputParam.next(fun?.useDynamicInputParams && !hasCustomImplementation? this.data.data.payload.configureActivity ?? null: null);
     });
   }
 

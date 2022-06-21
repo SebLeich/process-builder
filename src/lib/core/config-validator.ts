@@ -18,7 +18,6 @@ import { IParam } from "../process-builder/globals/i-param";
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from "../process-builder/globals/i-process-builder-config";
 import { ITaskCreationConfig } from "../process-builder/globals/i-task-creation-config";
 import { MethodEvaluationStatus } from "../process-builder/globals/method-evaluation-status";
-import sebleichProcessBuilderExtension from "../process-builder/globals/sebleich-process-builder-extension";
 import { TaskCreationStep } from "../process-builder/globals/task-creation-step";
 import { DialogService } from "../process-builder/services/dialog.service";
 import { addIFunction, updateIFunction } from "../process-builder/store/actions/i-function.actions";
@@ -96,8 +95,14 @@ export const validateBPMNConfig = (bpmnJS: any, injector: Injector) => {
         _directEditingActivateActions[evt.active.element.businessObject.$type]({ 'active': { 'element': element } } as any);
     }
 
-    _shapeAddedActions[shapeTypes.StartEvent] = (evt: IEvent) => getModelingModule(bpmnJS).updateLabel(evt.element, config.statusConfig.initialStatus);
-    _shapeAddedActions[shapeTypes.EndEvent] = (evt: IEvent) => getModelingModule(bpmnJS).updateLabel(evt.element, config.statusConfig.finalStatus);
+    _shapeAddedActions[shapeTypes.StartEvent] = (evt: IEvent) => {
+        getModelingModule(bpmnJS).updateLabel(evt.element, config.statusConfig.initialStatus);
+        validationFinishedSubject.next();
+    }
+    _shapeAddedActions[shapeTypes.EndEvent] = (evt: IEvent) => {
+        getModelingModule(bpmnJS).updateLabel(evt.element, config.statusConfig.finalStatus);
+        validationFinishedSubject.next();
+    }
 
     _shapeDeleteExecutedActions[shapeTypes.Task] = (evt: IShapeDeleteExecutedEvent) => {
         let removeElements = evt.context.shape.outgoing.filter(x => x.type === shapeTypes.DataOutputAssociation || (x.type === shapeTypes.SequenceFlow && BPMNJsRepository.sLPBExtensionSetted(x.target.businessObject, 'GatewayExtension', (ext) => ext.gatewayType === 'error_gateway')));

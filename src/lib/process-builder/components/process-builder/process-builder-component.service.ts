@@ -12,7 +12,7 @@ import gridModule from "diagram-js/lib/features/grid-snapping/visuals";
 // @ts-ignore
 import CliModule from 'bpmn-js-cli';
 import { ProcessBuilderService } from '../../services/process-builder.service';
-import { BehaviorSubject, combineLatest, debounceTime, delay, distinctUntilChanged, map, Observable, of, Subject, Subscription, switchMap, take, timer } from 'rxjs';
+import { BehaviorSubject, combineLatest, debounceTime, delay, distinctUntilChanged, map, Observable, of, shareReplay, startWith, Subject, Subscription, switchMap, take, throttleTime, timer } from 'rxjs';
 import { Store } from '@ngrx/store';
 
 import * as fromIParamState from '../../store/reducers/i-param.reducer';
@@ -31,19 +31,26 @@ import { Guid } from '../../globals/guid';
 import { selectIBpmnJSModels, selectRecentlyUsedIBpmnJSModel } from '../../store/selectors/i-bpmn-js-model.selectors';
 import { IBpmnJSModel } from '../../globals/i-bpmn-js-model';
 import sebleichProcessBuilderExtension from '../../globals/sebleich-process-builder-extension';
-import { getCanvasModule } from 'src/lib/bpmn-io/bpmn-modules';
+import { getCanvasModule, getEventBusModule, getTooltipModule } from 'src/lib/bpmn-io/bpmn-modules';
 import { IViewbox } from 'src/lib/bpmn-io/i-viewbox';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { processPerformer } from 'src/lib/core/process-performer';
+import bpmnJsEventTypes from 'src/lib/bpmn-io/bpmn-js-event-types';
+import { BPMNJsRepository } from 'src/lib/core/bpmn-js-repository';
+
+// @ts-ignore
+import * as tooltips from "diagram-js/lib/features/tooltips";
+import { IElement } from 'src/lib/bpmn-io/i-element';
+import { ValidationErrorPipe } from '../../pipes/validation-error.pipe';
+import { IProcessValidationResult } from '../../classes/validation-result';
+import { ProcessBuilderRepository } from 'src/lib/core/process-builder-repository';
 
 @Injectable()
 export class ProcessBuilderComponentService {
 
   private _init: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
-  /**
-   * @deprecated
-   */
-  private _shapeCreated = new Subject<IEvent>();
   private _currentIBpmnJSModelGuid = new BehaviorSubject<string | null>(null);
+  private _modelChanged = new Subject<void>();
 
   // instantiate BpmnJS with component
   public bpmnJS!: IBpmnJS;
@@ -56,11 +63,6 @@ export class ProcessBuilderComponentService {
   public funcs$ = this._funcStore.select(selectIFunctions());
   public models$ = this._bpmnJSModelStore.select(selectIBpmnJSModels());
   public init$ = this._init.pipe(delay(1));
-
-  /**
-   * @deprecated
-   */
-  public shapeCreated$ = this._shapeCreated.asObservable();
   public currentIBpmnJSModelGuid$ = this._currentIBpmnJSModelGuid.pipe(distinctUntilChanged());
   public currentIBpmnJSModel$ = combineLatest(
     [
@@ -70,6 +72,11 @@ export class ProcessBuilderComponentService {
   ).pipe(
     debounceTime(10),
     map(([bpmnJSModels, bpmnJSModelGuid]: [IBpmnJSModel[], string | null]) => bpmnJSModels.find(x => x.guid === bpmnJSModelGuid))
+  );
+  public validation$: Observable<undefined | null | IProcessValidationResult> = this._modelChanged.pipe(
+    throttleTime(500),
+    map(() => BPMNJsRepository.validateProcess(this.bpmnJS)),
+    shareReplay(1)
   );
 
   private _subscriptions: Subscription[] = [];
@@ -120,9 +127,6 @@ export class ProcessBuilderComponentService {
           this.elementRegistry = this.bpmnJS.get(BPMNJSModules.ElementRegistry);
           this.modeling = this.bpmnJS.get(BPMNJSModules.Modeling);
           this.eventBus = this.bpmnJS.get(BPMNJSModules.EventBus);
-
-          this.eventBus.on(BPMNJSEventTypes.ShapeAdded, (evt: any) => this._shapeCreated.next(evt));
-
           this._init.next(true);
         }
       });
@@ -214,13 +218,23 @@ export class ProcessBuilderComponentService {
       .catch((err) => console.log('error rendering', err));
   }
 
+  tryExecute() {
+
+    try {
+      processPerformer(this.bpmnJS);
+    } catch (error) {
+      console.log(error);
+    }
+
+  }
+
   undo = () => (window as any).cli.undo();
   redo = () => (window as any).cli.redo();
 
   private _setUp() {
 
     this.bpmnJS = new BpmnJS({
-      additionalModules: [gridModule, CliModule],
+      additionalModules: [gridModule, CliModule, tooltips],
       cli: {
         bindTo: 'cli'
       },
@@ -234,8 +248,45 @@ export class ProcessBuilderComponentService {
         if (!model) return;
         this.setBpmnModel(model.xml, model.viewbox);
       }),
-      validateBPMNConfig(this.bpmnJS, this._injector).subscribe()
+      validateBPMNConfig(this.bpmnJS, this._injector).subscribe(() => {
+        console.log('TRIGGERED');
+        this._modelChanged.next();
+      })
     ]);
+
+    getEventBusModule(this.bpmnJS).on(bpmnJsEventTypes.ElementChanged, () => this._modelChanged.next());
+
+    let prevSub: Subscription | undefined;
+    getEventBusModule(this.bpmnJS).on(bpmnJsEventTypes.ElementHover, (evt) => {
+
+      ProcessBuilderRepository.clearAllTooltips(this.bpmnJS);
+
+      var tooltipModule = getTooltipModule(this.bpmnJS);
+
+      if (prevSub) {
+        prevSub.unsubscribe();
+        prevSub = undefined;
+      }
+
+      prevSub = this.validation$.subscribe((validation) => {
+
+        if (!validation) return;
+
+        let errors = validation.errors.filter(x => x.element === evt.element);
+
+        if (errors.length > 0) {
+          tooltipModule.add({
+            position: {
+              x: (evt.element as IElement).x,
+              y: (evt.element as IElement).y + (evt.element as IElement).height + 3
+            },
+            html:
+              `<div style="width: 120px; background: #f44336de; color: white; font-size: .7rem; padding: .2rem .3rem; border-radius: 2px; line-height: .8rem;">${errors.map((x, index) => `${index + 1}: ${new ValidationErrorPipe().transform(x.error)}`).join('<br>')}</div>`
+          });
+        }
+
+      });
+    });
 
   }
 

@@ -1,4 +1,6 @@
 import { Observable, ReplaySubject } from "rxjs";
+import { getTooltipModule } from "../bpmn-io/bpmn-modules";
+import { IBpmnJS } from "../process-builder/globals/i-bpmn-js";
 import { IParamKeyValue } from "../process-builder/globals/i-param-key-value";
 
 export class ProcessBuilderRepository {
@@ -33,7 +35,7 @@ export class ProcessBuilderRepository {
 
             try {
 
-                let defaultValue = value.type === 'array' ? [] : value.type === 'object'? { ...value.defaultValue }: value.defaultValue;
+                let defaultValue = value.type === 'array' ? [] : value.type === 'object' ? { ...value.defaultValue } : value.defaultValue;
                 if (!defaultValue) defaultValue = config[value.type]();
                 if (!defaultValue) defaultValue = this._randomValueGenerator[value.type]();
 
@@ -57,6 +59,11 @@ export class ProcessBuilderRepository {
 
         return parent;
 
+    }
+
+    static clearAllTooltips(bpmnJS: IBpmnJS) {
+        var tooltipModule = getTooltipModule(bpmnJS);
+        Object.values(tooltipModule._tooltips).forEach(x => tooltipModule.remove(x));
     }
 
     static extractObjectIParams(object: any): IParamKeyValue[] {

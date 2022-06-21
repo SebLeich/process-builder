@@ -1,14 +1,17 @@
 import { Inject, Injectable } from "@angular/core";
 import { ParamCodes } from "src/config/param-codes";
-import { getModelingModule } from "../bpmn-io/bpmn-modules";
+import { getElementRegistryModule, getModelingModule } from "../bpmn-io/bpmn-modules";
 import { IBusinessObject } from "../bpmn-io/i-business-object";
 import { IElement } from "../bpmn-io/i-element";
 import shapeTypes from "../bpmn-io/shape-types";
+import { IProcessValidationResult } from "../process-builder/classes/validation-result";
 import { IBpmnJS } from "../process-builder/globals/i-bpmn-js";
 import { IFunction } from "../process-builder/globals/i-function";
 import { IParam } from "../process-builder/globals/i-param";
 import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from "../process-builder/globals/i-process-builder-config";
 import sebleichProcessBuilderExtension from "../process-builder/globals/sebleich-process-builder-extension";
+import { ValidationError } from "../process-builder/globals/validation-error";
+import { ValidationWarning } from "../process-builder/globals/validation-warning";
 
 @Injectable({ providedIn: 'root' })
 export class BPMNJsRepository {
@@ -65,6 +68,11 @@ export class BPMNJsRepository {
         return element.extensionElements.values.filter((x: any) => x.$instanceOf(type))[0];
     }
 
+    static getNextNodes(currentNode: IElement | null | undefined): IElement[] {
+        if (!currentNode) return [];
+        return currentNode.outgoing.filter(x => x.type === shapeTypes.SequenceFlow).map(x => x.target);
+    }
+
     static getSLPBExtension<T>(businessObject: IBusinessObject | undefined, type: 'ActivityExtension' | 'GatewayExtension' | 'DataObjectExtension', provider: (extensions: any) => T) {
         if (!businessObject) return undefined;
         let extension = BPMNJsRepository.getExtensionElements(businessObject, `${sebleichProcessBuilderExtension.prefix}:${type}`);
@@ -93,19 +101,69 @@ export class BPMNJsRepository {
         setter(activityExtension as any);
     }
 
-    validateErrorGateway(bpmnJS: any, element: IElement, func: IFunction, gatewayName: string = this._config.errorGatewayConfig.gatewayName) {
+    validateErrorGateway(bpmnJS: IBpmnJS, element: IElement, func: IFunction, gatewayName: string = this._config.errorGatewayConfig.gatewayName) {
         var gatewayShape: IElement | undefined = element.outgoing.find(x => x.type === shapeTypes.SequenceFlow && BPMNJsRepository.sLPBExtensionSetted(x.businessObject, 'GatewayExtension', (ext) => ext.gatewayType === 'error_gateway'))?.target, modelingModule = getModelingModule(bpmnJS);
         if (func.canFail && !gatewayShape) {
             gatewayShape = modelingModule.appendShape(element, {
-                type: shapeTypes.ExclusiveGateway,
-                data: {
-                    'gatewayType': 'error_gateway'
-                }
+                type: shapeTypes.ExclusiveGateway
             }, { x: element.x + 200, y: element.y + 40 });
+            BPMNJsRepository.updateBpmnElementSLPBExtension(bpmnJS, element.businessObject, 'GatewayExtension', (ext) => ext.gatewayType = 'error_gateway');
             modelingModule.updateLabel(gatewayShape, gatewayName);
         } else if (!func.canFail && gatewayShape) {
             modelingModule.removeElements([gatewayShape]);
         }
+    }
+
+    static validateProcess(bpmnJS: IBpmnJS): IProcessValidationResult {
+        let errors: { error: ValidationError, element?: IElement }[] = [], warnings: { warning: ValidationWarning, element?: IElement }[] = [];
+        let elementRegistry = getElementRegistryModule(bpmnJS);
+
+        let startEvents = elementRegistry.filter(x => x.type === shapeTypes.StartEvent), endEvents = elementRegistry.filter(x => x.type === shapeTypes.EndEvent);
+        if (startEvents.length === 0) errors.push({ error: ValidationError.NoStartEvent });
+        else if (startEvents.length > 1) startEvents.forEach(x => errors.push({ error: ValidationError.MultipleStartEvents, element: x }));
+
+        for (let startEvent of startEvents) {
+
+            if (startEvent.incoming.filter(x => x.type === shapeTypes.SequenceFlow).length > 0) {
+                errors.push({ element: startEvent, error: ValidationError.StartEventWithIncomingSequenceFlow });
+            }
+
+            let cursor: IElement | null = startEvent, stack: IElement[] = [], path: IElement[] = [];
+            while (cursor) {
+
+                let response: IElement[] = this.getNextNodes(cursor);
+                path.push(cursor);
+
+                if ((cursor.type !== shapeTypes.ExclusiveGateway || cursor.type !== shapeTypes.ExclusiveGateway) && response.length > 1) {
+                    errors.push({ element: cursor, error: ValidationError.MultipleOutgoingSequenceFlowsFromNoneGatewayShape });
+                }
+
+                if (response.length === 0) {
+
+                    if (cursor.type !== shapeTypes.EndEvent) errors.push({ error: ValidationError.SequenceEndWithoutEndEvent, element: cursor });
+
+                } else {
+
+                    stack = [...stack, ...response];
+
+                }
+
+                cursor = stack[0];
+                stack.splice(0, 1);
+                while (cursor && path.indexOf(cursor) > -1) {
+                    warnings.push({ element: cursor, warning: ValidationWarning.CyclicAccess });
+                    cursor = stack[0];
+                }
+
+            }
+
+        }
+
+        if (endEvents.length === 0) {
+            warnings.push({ warning: ValidationWarning.NoEndEvent });
+        }
+
+        return { warnings: warnings, errors: errors };
     }
 
 }

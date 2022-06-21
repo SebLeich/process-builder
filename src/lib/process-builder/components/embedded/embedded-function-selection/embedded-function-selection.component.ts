@@ -7,8 +7,9 @@ import { showAnimation } from 'src/lib/shared/animations/show';
 import * as fromIFunctionState from 'src/lib/process-builder/store/reducers/i-function.reducer';
 import { Store } from '@ngrx/store';
 import { selectIFunctions } from 'src/lib/process-builder/store/selectors/i-function.selector';
-import { FunctionPreviewComponent } from '../../function-preview/function-preview.component';
+import { FunctionPreviewComponent } from '../../previews/function-preview/function-preview.component';
 import { FormControl, FormGroup } from '@angular/forms';
+import { IInputParam } from 'src/lib/process-builder/globals/i-input-param';
 
 @Component({
   selector: 'app-embedded-function-selection',
@@ -16,7 +17,7 @@ import { FormControl, FormGroup } from '@angular/forms';
   styleUrls: ['./embedded-function-selection.component.sass'],
   animations: [showAnimation]
 })
-export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>, OnDestroy, OnInit {
+export class EmbeddedFunctionSelectionComponent implements IEmbeddedView, OnDestroy, OnInit {
 
   @Input() inputParams!: ParamCodes | ParamCodes[] | null;
 
@@ -43,7 +44,7 @@ export class EmbeddedFunctionSelectionComponent implements IEmbeddedView<number>
       this._store.select(selectIFunctions()).pipe(map(funcs => {
         return funcs.filter(x => {
           if (!x) return false;
-          let requiredInputs: ParamCodes[] = ((Array.isArray(x.inputParams) ? x.inputParams : [x.inputParams]).filter(y => y && !y.optional)).map(x => x?.param) as ParamCodes[];
+          let requiredInputs: ParamCodes[] = (Array.isArray(x.inputParams) ? x.inputParams : [x.inputParams]).filter(y => y && typeof y === 'object' && !y.optional).map((x) => (x as IInputParam).param) as ParamCodes[];
           if (requiredInputs.length === 0) return true;
           let availableInputParams: ParamCodes[] = Array.isArray(this.inputParams) ? this.inputParams : this.inputParams ? [this.inputParams] : [];
           return true;

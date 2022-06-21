@@ -90,7 +90,10 @@ export default [
     } as IFunction,
     {
         'identifier': 7,
-        'inputParams': [],
+        'inputParams': null,
+        'useDynamicInputParams': {
+            'typeLimits': [ 'object' ]
+        },
         'name': 'Download JSON',
         'normalizedName': 'downloadJSON',
         'description': 'method downloads object as json',

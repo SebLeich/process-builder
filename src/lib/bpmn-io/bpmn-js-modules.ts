@@ -6,5 +6,6 @@ export default {
     Modeling: 'modeling',
     EventBus: 'eventBus',
     Selection: 'selection',
-    Snapping: 'snapping'
+    Snapping: 'snapping',
+    Tooltip: 'tooltips'
 }

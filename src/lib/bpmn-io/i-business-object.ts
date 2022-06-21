@@ -10,4 +10,5 @@ export interface IBusinessObject {
     outgoing: IBusinessObjectConnector[];
     lanes: IElement[];
     extensionElements: any;
+    name?: string;
 }

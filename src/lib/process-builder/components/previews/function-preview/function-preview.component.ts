@@ -1,14 +1,12 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { Store } from '@ngrx/store';
-import { IFunction } from '../../globals/i-function';
-import { IInputParam } from '../../globals/i-input-param';
+import { IFunction } from '../../../globals/i-function';
+import { IInputParam } from '../../../globals/i-input-param';
 import * as fromIFunction from 'src/lib/process-builder/store/reducers/i-function.reducer';
-import * as fromIParam from 'src/lib/process-builder/store/reducers/i-param.reducer';
-import { addIFunction, removeIFunction, updateIFunction } from '../../store/actions/i-function.actions';
-import { CodemirrorRepository } from 'src/lib/core/codemirror-repository';
-import { selectIFunctionsByOutputParam } from '../../store/selectors/i-function.selector';
+import { removeIFunction, updateIFunction } from '../../../store/actions/i-function.actions';
+import { selectIFunctionsByOutputParam } from '../../../store/selectors/i-function.selector';
 import { take } from 'rxjs';
-import { removeIParam } from '../../store/actions/i-param.actions';
+import { removeIParam } from '../../../store/actions/i-param.actions';
 
 @Component({
   selector: 'app-function-preview',
@@ -27,7 +25,7 @@ export class FunctionPreviewComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.inputParams = Array.isArray(this.func.inputParams) ? this.func.inputParams : this.func.inputParams ? [this.func.inputParams] : [];
+    this.inputParams = Array.isArray(this.func.inputParams) ? this.func.inputParams : typeof this.func.inputParams === 'number' ? [this.func.inputParams] : [];
   }
 
   removeFunction(){

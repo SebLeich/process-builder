@@ -9,7 +9,7 @@ import { IProcessBuilderConfig, PROCESS_BUILDER_CONFIG_TOKEN } from 'src/lib/pro
   templateUrl: './embedded-configure-error-gateway-entrance-connection.component.html',
   styleUrls: ['./embedded-configure-error-gateway-entrance-connection.component.sass']
 })
-export class EmbeddedConfigureErrorGatewayEntranceConnectionComponent implements IEmbeddedView<ErrorGatewayEvent>, OnDestroy {
+export class EmbeddedConfigureErrorGatewayEntranceConnectionComponent implements IEmbeddedView, OnDestroy {
 
   formGroup!: FormGroup;
 
