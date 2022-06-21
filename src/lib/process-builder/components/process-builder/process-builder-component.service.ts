@@ -83,6 +83,25 @@ export class ProcessBuilderComponentService {
     this._setUp();
   }
 
+  createModel() {
+    this._processBuilderService.defaultBPMNModel$
+      .pipe(take(1))
+      .subscribe({
+        next: (xml: string) => {
+          let defaultBpmnModel = {
+            'guid': Guid.generateGuid(),
+            'created': moment().format('yyyy-MM-ddTHH:mm:ss'),
+            'description': null,
+            'name': this._config.defaultBpmnModelName,
+            'xml': xml,
+            'lastModified': moment().format('yyyy-MM-ddTHH:mm:ss')
+          };
+          this._bpmnJSModelStore.dispatch(addIBpmnJSModel(defaultBpmnModel));
+          this._currentIBpmnJSModelGuid.next(defaultBpmnModel.guid);
+        }
+      });
+  }
+
   dispose() {
     for (let sub of this._subscriptions) sub.unsubscribe();
     this._subscriptions = [];
@@ -100,11 +119,6 @@ export class ProcessBuilderComponentService {
           this.eventBus = this.bpmnJS.get(BPMNJSModules.EventBus);
 
           this.eventBus.on(BPMNJSEventTypes.ShapeAdded, (evt: any) => this._shapeCreated.next(evt));
-
-          // (2) Get the existing process and the start event
-          //const process = elementRegistry.get('ROOT');
-
-          //const shape = modeling.createShape({ type: ShapeTypes.Task }, { x: 200, y: 300 }, process);
 
           this._init.next(true);
         }

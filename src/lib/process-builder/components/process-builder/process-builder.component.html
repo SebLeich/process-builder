@@ -14,7 +14,7 @@
 
   <div class="info">
 
-    <div (click)="processBuilderComponentService.setNextModel()">
+    <div>
       {{(processBuilderComponentService.models$|async)?.length ?? 0}} Models
     </div>
     <div>
@@ -24,12 +24,20 @@
       {{(processBuilderComponentService.funcs$|async)?.length ?? 0}} Funcs
     </div>
 
-    <button mat-raised-button color="warn" (click)="clearState()">
-      Clear state
+    <button mat-raised-button color="primary" (click)="processBuilderComponentService.createModel()">
+      New model
+    </button>
+
+    <button mat-raised-button color="primary" (click)="processBuilderComponentService.setNextModel()" [disabled]="((processBuilderComponentService.models$|async)?.length ?? 0) < 2">
+      Next model
     </button>
 
     <button mat-raised-button color="primary" (click)="processBuilderComponentService.saveModel()">
       Save model
+    </button>
+
+    <button mat-raised-button color="warn" (click)="clearState()">
+      Clear state
     </button>
 
   </div>
